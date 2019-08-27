@@ -1555,7 +1555,12 @@ Packet* RakPeer::Receive( void )
 			( (unsigned char) packet->data[ 0 ] == ID_TIMESTAMP ) )
 		{
 			offset = sizeof(unsigned char);
-			ShiftIncomingTimestamp( packet->data + offset, packet->systemAddress );
+			
+			// TODO: Disabled timestamp shifting. Better to do this kind of stuff in application code 
+			// since it works only if you predicting only and not e.g. interpolating.
+			// Also this does not apparently handle byte endianess correctly.
+			// ShiftIncomingTimestamp( packet->data + offset, packet->systemAddress );
+
 //			msgId=packet->data[sizeof(unsigned char) + sizeof( RakNet::Time )];
 		}
 //		else

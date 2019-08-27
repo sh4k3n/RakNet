@@ -145,27 +145,27 @@ void DynDNS::Update(void)
 		{
 			unsigned int i;
 
-			char *result;
-			result=strstr((char*) packet->data, "Connection: close");
-			if (result!=0)
+			char *resultStr;
+			resultStr =strstr((char*) packet->data, "Connection: close");
+			if (resultStr !=0)
 			{
-				result+=strlen("Connection: close");
-				while (*result && ((*result=='\r') || (*result=='\n') || (*result==' ')) )
-					result++;
+				resultStr +=strlen("Connection: close");
+				while (*resultStr && ((*resultStr =='\r') || (*resultStr =='\n') || (*resultStr ==' ')) )
+					resultStr++;
 				for (i=0; i < 13; i++)
 				{
-					if (strncmp(resultTable[i].code, result, strlen(resultTable[i].code))==0)
+					if (strncmp(resultTable[i].code, resultStr, strlen(resultTable[i].code))==0)
 					{
 						if (resultTable[i].resultCode==RC_SUCCESS)
 						{
 							// Read my external IP into myIPStr
 							// Advance until we hit a number
-							while (*result && ((*result<'0') || (*result>'9')) )
-								result++;
-							if (*result)
+							while (*resultStr && ((*resultStr<'0') || (*resultStr>'9')) )
+								resultStr++;
+							if (*resultStr)
 							{
 								SystemAddress parser;
-								parser.FromString(result);
+								parser.FromString(resultStr);
 								parser.ToString(false, myIPStr);
 							}
 						}

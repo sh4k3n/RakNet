@@ -994,15 +994,10 @@ void BitStream::AssertCopyData( void )
 }
 bool BitStream::IsNetworkOrderInternal(void)
 {
-
-
-
-
-
 	static unsigned long htonlValue = htonl(12345);
 	return htonlValue == 12345;
-
 }
+
 void BitStream::ReverseBytes(unsigned char *inByteArray, unsigned char *inOutByteArray, const unsigned int length)
 {
 	for (BitSize_t i=0; i < length; i++)
