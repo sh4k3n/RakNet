@@ -52,6 +52,7 @@ int main(void)
 	for (i=0; i < NUM_PEERS; i++)
 	{
 		peers[i]=RakNet::RakPeerInterface::GetInstance();
+        peers[i]->ApplyNetworkSimulator(0.01f, 40, 400);
 		peers[i]->SetMaximumIncomingConnections(CONNECTIONS_PER_SYSTEM);
 		RakNet::SocketDescriptor socketDescriptor(60000+i, 0);
 		peers[i]->Startup(NUM_PEERS, &socketDescriptor, 1);

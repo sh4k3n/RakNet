@@ -135,7 +135,7 @@ struct DatagramHeaderFormat
 		//return 2 + 3 + sizeof(RakNet::TimeMS) + sizeof(float)*2;
 		return 2 + 3 +
 #if INCLUDE_TIMESTAMP_WITH_DATAGRAMS==1
-			sizeof(RakNetTimeMS) +
+			sizeof(RakNet::TimeMS) +
 #endif
 			sizeof(float)*1;
 	}

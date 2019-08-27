@@ -118,8 +118,12 @@
 #endif
 
 // Use sliding window congestion control instead of ping based congestion control
-#ifndef USE_SLIDING_WINDOW_CONGESTION_CONTROL
-#define USE_SLIDING_WINDOW_CONGESTION_CONTROL 1
+#define RAKNET_ARQ_UDT 0
+#define RAKNET_ARQ_SLIDING_WINDOW 1
+#define RAKNET_ARQ_KCP 2
+
+#ifndef RAKNET_ARQ
+#define RAKNET_ARQ RAKNET_ARQ_UDT
 #endif
 
 // When a large message is arriving, preallocate the memory for the entire block

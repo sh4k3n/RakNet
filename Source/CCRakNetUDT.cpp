@@ -10,7 +10,7 @@
 
 #include "CCRakNetUDT.h"
 
-#if USE_SLIDING_WINDOW_CONGESTION_CONTROL!=1
+#if RAKNET_ARQ == RAKNET_ARQ_UDT
 
 #include "Rand.h"
 #include "MTUSize.h"

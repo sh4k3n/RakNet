@@ -32,9 +32,9 @@ using namespace pp;
 #endif
 */
 
-#if USE_SLIDING_WINDOW_CONGESTION_CONTROL!=1
+#if RAKNET_ARQ == RAKNET_ARQ_UDT
 #include "CCRakNetUDT.h"
-#else
+#elif RAKNET_ARQ == RAKNET_ARQ_SLIDING_WINDOW
 #include "CCRakNetSlidingWindow.h"
 #endif
 

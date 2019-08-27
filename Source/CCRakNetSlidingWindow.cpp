@@ -10,7 +10,7 @@
 
 #include "CCRakNetSlidingWindow.h"
 
-#if USE_SLIDING_WINDOW_CONGESTION_CONTROL==1
+#if RAKNET_ARQ == RAKNET_ARQ_SLIDING_WINDOW
 
 static const double UNSET_TIME_US=-1;
 

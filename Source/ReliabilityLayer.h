@@ -40,10 +40,10 @@
 #include "Rand.h"
 #include "RakNetSocket2.h"
 
-#if USE_SLIDING_WINDOW_CONGESTION_CONTROL!=1
+#if RAKNET_ARQ == RAKNET_ARQ_UDT
 #include "CCRakNetUDT.h"
 #define INCLUDE_TIMESTAMP_WITH_DATAGRAMS 1
-#else
+#elif RAKNET_ARQ == RAKNET_ARQ_SLIDING_WINDOW
 #include "CCRakNetSlidingWindow.h"
 #define INCLUDE_TIMESTAMP_WITH_DATAGRAMS 0
 #endif
@@ -592,12 +592,11 @@ private:
 	CCTimeType nextAckTimeToSend;
 
 	
-#if USE_SLIDING_WINDOW_CONGESTION_CONTROL==1
-	RakNet::CCRakNetSlidingWindow congestionManager;
-#else
-	RakNet::CCRakNetUDT congestionManager;
+#if RAKNET_ARQ == RAKNET_ARQ_UDT
+    RakNet::CCRakNetUDT congestionManager;
+#elif RAKNET_ARQ == RAKNET_ARQ_SLIDING_WINDOW
+    RakNet::CCRakNetSlidingWindow congestionManager;
 #endif
-
 
 	uint32_t unacknowledgedBytes;
 	
