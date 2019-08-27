@@ -1,0 +1,6 @@
+[submodule "DependentExtensions/catch2"]
+	path = DependentExtensions/catch2
+	url = https://github.com/catchorg/Catch2
+[submodule "DependentExtensions/kcp"]
+	path = DependentExtensions/kcp
+	url = https://github.com/skywind3000/kcp
