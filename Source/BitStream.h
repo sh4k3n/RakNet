@@ -634,9 +634,6 @@ namespace RakNet
 		bool Read(char *varString);
 		bool Read(unsigned char *varString);
 
-		/// Write zeros until the bitstream is filled up to \a bytes
-		void PadWithZeroToByteLength( unsigned int bytes );
-
 		/// Get the number of leading zeros for a number
 		/// \param[in] x Number to test
 		static int NumberOfLeadingZeroes( uint8_t x );

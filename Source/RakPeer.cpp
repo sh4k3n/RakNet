@@ -4568,6 +4568,21 @@ void RakPeer::GenerateGUID(void)
 // }
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 namespace RakNet {
+
+    static void AddPaddingWithRandomData(BitStream& bitStream, size_t count, uint64_t seed)
+    {
+        if (count > bitStream.GetNumberOfBytesUsed())
+        {
+            count -= bitStream.GetNumberOfBytesUsed();
+            while (count)
+            {
+                constexpr uint8_t Salt = 0xA5;
+                bitStream.Write(uint8_t(count ^ seed ^ Salt));
+                --count;
+            }
+        }
+    }
+
 bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, bool *isOfflineMessage, RakNet::TimeUS timeRead )
 {
 	(void) timeRead;
@@ -5213,9 +5228,8 @@ bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data,
 			// MTU. Lower MTU if it exceeds our own limit.
 			uint16_t mtu = (length+UDP_HEADER_SIZE > MAXIMUM_MTU_SIZE) ? MAXIMUM_MTU_SIZE : length+UDP_HEADER_SIZE;
 			bsOut.WriteCasted<uint16_t>(mtu);
-			// Pad response with zeros to MTU size so the connection's MTU will be tested in both directions
-			bsOut.PadWithZeroToByteLength(mtu - bsOut.GetNumberOfBytesUsed());
-
+            // Pad response to MTU size so the connection's MTU will be tested in both directions
+            AddPaddingWithRandomData(bsOut, mtu, timeRead);
 			for (i=0; i < rakPeer->pluginListNTS.Size(); i++)
 				rakPeer->pluginListNTS[i]->OnDirectSocketSend((const char*) bsOut.GetData(), bsOut.GetNumberOfBitsUsed(), systemAddress);
 			// SocketLayer::SendTo( rakNetSocket, (const char*) bsOut.GetData(), bsOut.GetNumberOfBytesUsed(), systemAddress, _FILE_AND_LINE_ );
@@ -5504,7 +5518,7 @@ void ProcessNetworkPacket( SystemAddress systemAddress, const char *data, const 
 	else
 	{
 		// int a=5;
-		// printf("--- Packet from unknown system %s\n", systemAddress.ToString());
+		//printf("--- Packet from unknown system %s\n", systemAddress.ToString());
 	}
 }
 
@@ -5602,6 +5616,7 @@ bool RakPeer::RunRecvFromOnce( RakNetSocket *s )
 	return false;
 }
 */
+
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 {
@@ -5798,10 +5813,13 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 					bitStream.Write((MessageID)ID_OPEN_CONNECTION_REQUEST_1);
 					bitStream.WriteAlignedBytes((const unsigned char*) OFFLINE_MESSAGE_DATA_ID, sizeof(OFFLINE_MESSAGE_DATA_ID));
 					bitStream.Write((MessageID)RAKNET_PROTOCOL_VERSION);
-					bitStream.PadWithZeroToByteLength(mtuSizes[MTUSizeIndex]-UDP_HEADER_SIZE);
-
-					char str[256];
-					rcs->systemAddress.ToString(true,str);
+                    // Add padding for Path MTU Discovery.
+                    // TODO: Path MTU Discovery should be separate protocol. Current implementation may set wrong
+                    // MTU size due to packet loss.
+                    // Note: Using random data to prevent compression in lower layer.
+                    AddPaddingWithRandomData(bitStream, mtuSizes[MTUSizeIndex] - UDP_HEADER_SIZE, timeMS);
+					//char str[256];
+					//rcs->systemAddress.ToString(true,str);
 
 					//RAKNET_DEBUG_PRINTF("%i:IOCR, ", __LINE__);
 

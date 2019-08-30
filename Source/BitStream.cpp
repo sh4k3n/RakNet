@@ -741,17 +741,6 @@ BitSize_t BitStream::GetNumberOfBitsAllocated(void) const
 {
 	return numberOfBitsAllocated;
 }
-void BitStream::PadWithZeroToByteLength( unsigned int bytes )
-{
-	if (GetNumberOfBytesUsed() < bytes)
-	{
-		AlignWriteToByteBoundary();
-		unsigned int numToWrite = bytes - GetNumberOfBytesUsed();
-		AddBitsAndReallocate( BYTES_TO_BITS(numToWrite) );
-		memset(data+BITS_TO_BYTES(numberOfBitsUsed), 0, (size_t) numToWrite);
-		numberOfBitsUsed+=BYTES_TO_BITS(numToWrite);
-	}
-}
 
 /* 
 // Julius Goryavsky's version of Harley's algorithm.
