@@ -502,6 +502,11 @@ struct RAK_DLL_EXPORT uint24_t
 	inline const uint24_t operator*( const uint32_t &other ) const { return uint24_t(val*other); }
 };
 
+    typedef uint24_t DatagramSequenceNumberType;
+    typedef double BytesPerMicrosecond;
+    typedef double BytesPerSecond;
+    typedef double MicrosecondsPerByte;
+
 } // namespace RakNet
 
 #endif

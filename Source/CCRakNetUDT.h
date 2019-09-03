@@ -10,7 +10,7 @@
 
 #include "RakNetDefines.h"
 
-#if USE_SLIDING_WINDOW_CONGESTION_CONTROL!=1
+#if RAKNET_ARQ == RAKNET_ARQ_UDT
 
 #ifndef __CONGESTION_CONTROL_UDT_H
 #define __CONGESTION_CONTROL_UDT_H
@@ -20,40 +20,12 @@
 #include "RakNetTypes.h"
 #include "DS_Queue.h"
 
-/// Set to 4 if you are using the iPod Touch TG. See http://www.jenkinssoftware.com/forum/index.php?topic=2717.0
-#define CC_TIME_TYPE_BYTES 8
-
 namespace RakNet
 {
-
-#if CC_TIME_TYPE_BYTES==8
-typedef uint64_t CCTimeType;
-#else
-typedef uint32_t CCTimeType;
-#endif
-
-typedef uint24_t DatagramSequenceNumberType;
-typedef double BytesPerMicrosecond;
-typedef double BytesPerSecond;
-typedef double MicrosecondsPerByte;
 
 /// CC_RAKNET_UDT_PACKET_HISTORY_LENGTH should be a power of 2 for the writeIndex variables to wrap properly
 #define CC_RAKNET_UDT_PACKET_HISTORY_LENGTH 64
 #define RTT_HISTORY_LENGTH 64
-
-/// Sizeof an UDP header in byte
-#define UDP_HEADER_SIZE 28
-
-#define CC_DEBUG_PRINTF_1(x)
-#define CC_DEBUG_PRINTF_2(x,y)
-#define CC_DEBUG_PRINTF_3(x,y,z)
-#define CC_DEBUG_PRINTF_4(x,y,z,a)
-#define CC_DEBUG_PRINTF_5(x,y,z,a,b)
-//#define CC_DEBUG_PRINTF_1(x) printf(x)
-//#define CC_DEBUG_PRINTF_2(x,y) printf(x,y)
-//#define CC_DEBUG_PRINTF_3(x,y,z) printf(x,y,z)
-//#define CC_DEBUG_PRINTF_4(x,y,z,a) printf(x,y,z,a)
-//#define CC_DEBUG_PRINTF_5(x,y,z,a,b) printf(x,y,z,a,b)
 
 /// \brief Encapsulates UDT congestion control, as used by RakNet
 /// Requirements:

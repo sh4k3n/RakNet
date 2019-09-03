@@ -2147,6 +2147,8 @@ bool RakPeer::Ping( const char* host, unsigned short remotePort, bool onlyReplyO
 	SocketLayer::SendTo( socketList[realIndex], (const char*)bitStream.GetData(), (int) bitStream.GetNumberOfBytesUsed(), systemAddress, _FILE_AND_LINE_ );
 	*/
 
+    // TODO: Use network simulator here also
+
 	RNS2_SendParameters bsp;
 	bsp.data = (char*) bitStream.GetData() ;
 	bsp.length = bitStream.GetNumberOfBytesUsed();
@@ -2719,10 +2721,12 @@ bool RakPeer::AdvertiseSystem( const char *host, unsigned short remotePort, cons
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void RakPeer::SetSplitMessageProgressInterval(int interval)
 {
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	RakAssert(interval>=0);
 	splitMessageProgressInterval=interval;
 	for ( unsigned short i = 0; i < maximumNumberOfPeers; i++ )
 		remoteSystemList[ i ].reliabilityLayer.SetSplitMessageProgressInterval(splitMessageProgressInterval);
+#endif
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3666,7 +3670,9 @@ RakPeer::RemoteSystemStruct * RakPeer::AssignSystemAddressToRemoteSystemList( co
 				remoteSystem->MTUSize=incomingMTU;
 			RakAssert(remoteSystem->MTUSize <= MAXIMUM_MTU_SIZE);
 			remoteSystem->reliabilityLayer.Reset(true, remoteSystem->MTUSize, useSecurity);
-			remoteSystem->reliabilityLayer.SetSplitMessageProgressInterval(splitMessageProgressInterval);
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
+            remoteSystem->reliabilityLayer.SetSplitMessageProgressInterval(splitMessageProgressInterval);
+#endif
 			remoteSystem->reliabilityLayer.SetUnreliableTimeout(unreliableTimeout);
 			remoteSystem->reliabilityLayer.SetTimeoutTime(defaultTimeoutTime);
 			AddToActiveSystemList(assignedIndex);
@@ -4384,7 +4390,9 @@ bool RakPeer::SendImmediate( char *data, BitSize_t numberOfBitsToSend, PacketPri
 	{
 		// Send may split the packet and thus deallocate data.  Don't assume data is valid if we use the callerAllocationData
 		bool useData = useCallerDataAllocation && callerDataAllocationUsed==false && sendListIndex+1==sendListSize;
-		remoteSystemList[sendList[sendListIndex]].reliabilityLayer.Send( data, numberOfBitsToSend, priority, reliability, orderingChannel, useData==false, remoteSystemList[sendList[sendListIndex]].MTUSize, currentTime, receipt );
+		remoteSystemList[sendList[sendListIndex]].reliabilityLayer.Send( 
+            remoteSystemList[sendList[sendListIndex]],            
+            data, numberOfBitsToSend, priority, reliability, orderingChannel, useData==false, remoteSystemList[sendList[sendListIndex]].MTUSize, currentTime, receipt );
 		if (useData)
 			callerDataAllocationUsed=true;
 
@@ -5512,7 +5520,8 @@ void ProcessNetworkPacket( SystemAddress systemAddress, const char *data, const 
 		{
 			remoteSystem->reliabilityLayer.HandleSocketReceiveFromConnectedPlayer(
 				data, length, systemAddress, rakPeer->pluginListNTS, remoteSystem->MTUSize,
-				rakNetSocket, &rnr, timeRead, updateBitStream);
+                *remoteSystem,               
+                &rnr, timeRead, updateBitStream);
 		}
 	}
 	else
@@ -5846,7 +5855,8 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 					bsp.data = (char*) bitStream.GetData();
 					bsp.length = bitStream.GetNumberOfBytesUsed();
 					bsp.systemAddress = rcs->systemAddress;
-					if (socketToUse->Send(&bsp, _FILE_AND_LINE_) == 10040)
+                    // TODO: Add network simulator
+                    if (socketToUse->Send(&bsp, _FILE_AND_LINE_) == 10040)
 					// if (SocketLayer::SendTo( socketToUse, (const char*) bitStream.GetData(), bitStream.GetNumberOfBytesUsed(), rcs->systemAddress, _FILE_AND_LINE_ )==-10040)
 					{
 						// Don't use this MTU size again

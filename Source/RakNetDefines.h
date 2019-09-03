@@ -123,7 +123,7 @@
 #define RAKNET_ARQ_KCP 2
 
 #ifndef RAKNET_ARQ
-#define RAKNET_ARQ RAKNET_ARQ_UDT
+#define RAKNET_ARQ RAKNET_ARQ_SLIDING_WINDOW
 #endif
 
 // When a large message is arriving, preallocate the memory for the entire block
@@ -190,10 +190,24 @@
 #endif
 
 
-
-
-
+/// Sizeof an UDP header in byte
+#ifndef UDP_HEADER_SIZE
+#define UDP_HEADER_SIZE 28
+#endif
 
 //#define USE_THREADED_SEND
+
+
+#define CC_DEBUG_PRINTF_1(x)
+#define CC_DEBUG_PRINTF_2(x,y)
+#define CC_DEBUG_PRINTF_3(x,y,z)
+#define CC_DEBUG_PRINTF_4(x,y,z,a)
+#define CC_DEBUG_PRINTF_5(x,y,z,a,b)
+//#define CC_DEBUG_PRINTF_1(x) printf(x)
+//#define CC_DEBUG_PRINTF_2(x,y) printf(x,y)
+//#define CC_DEBUG_PRINTF_3(x,y,z) printf(x,y,z)
+//#define CC_DEBUG_PRINTF_4(x,y,z,a) printf(x,y,z,a)
+//#define CC_DEBUG_PRINTF_5(x,y,z,a,b) printf(x,y,z,a,b)
+
 
 #endif // __RAKNET_DEFINES_H

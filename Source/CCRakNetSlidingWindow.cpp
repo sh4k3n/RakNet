@@ -15,9 +15,9 @@
 static const double UNSET_TIME_US=-1;
 
 #if CC_TIME_TYPE_BYTES==4
-static const CCTimeType SYN=10;
+static const RakNet::CCTimeType SYN=10;
 #else
-static const CCTimeType SYN=10000;
+static const RakNet::CCTimeType SYN=10000;
 #endif
 
 #include "MTUSize.h"

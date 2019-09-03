@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  Copyright (c) 2014, Oculus VR, Inc.
  *  All rights reserved.
@@ -7,9 +8,6 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
-
-#ifndef __RAKNET_TIME_H
-#define __RAKNET_TIME_H
 
 #include "NativeTypes.h"
 #include "RakNetDefines.h"
@@ -28,6 +26,18 @@ typedef uint32_t TimeMS;
 typedef uint64_t TimeUS;
 #endif
 
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+#define CC_TIME_TYPE_BYTES 4
+#else
+/// Set to 4 if you are using the iPod Touch TG. See http://www.jenkinssoftware.com/forum/index.php?topic=2717.0
+#define CC_TIME_TYPE_BYTES 8
+#endif
+
+#if CC_TIME_TYPE_BYTES==8
+typedef RakNet::TimeUS CCTimeType;
+#else
+typedef RakNet::TimeMS CCTimeType;
+#endif
+
 } // namespace RakNet
 
-#endif

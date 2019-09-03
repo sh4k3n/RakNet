@@ -36,8 +36,10 @@
 #include "SecureHandshake.h"
 #include "LocklessTypes.h"
 #include "DS_Queue.h"
+#include "RemoteSystem.h"
 
 namespace RakNet {
+
 /// Forward declarations
 class HuffmanEncodingTree;
 class PluginInterface2;
@@ -59,6 +61,8 @@ class RAK_DLL_EXPORT RakPeer : public RakPeerInterface, public RNS2EventHandler
 public:
 	///Constructor
 	RakPeer();
+
+    using RemoteSystemStruct = RemoteSystem;
 
 	///Destructor
 	virtual ~RakPeer();
@@ -651,47 +655,7 @@ public:
 	// static Packet *AllocPacket(unsigned dataSize, const char *file, unsigned int line);
 
 	/// \internal
-	/// \brief Holds the clock differences between systems, along with the ping
-	struct PingAndClockDifferential
-	{
-		unsigned short pingTime;
-		RakNet::Time clockDifferential;
-	};
 
-	/// \internal
-	/// \brief All the information representing a connected system
-	struct RemoteSystemStruct
-	{
-		bool isActive; // Is this structure in use?
-		SystemAddress systemAddress;  /// Their external IP on the internet
-		SystemAddress myExternalSystemAddress;  /// Your external IP on the internet, from their perspective
-		SystemAddress theirInternalSystemAddress[MAXIMUM_NUMBER_OF_INTERNAL_IDS];  /// Their internal IP, behind the LAN
-		ReliabilityLayer reliabilityLayer;  /// The reliability layer associated with this player
-		bool weInitiatedTheConnection; /// True if we started this connection via Connect.  False if someone else connected to us.
-		PingAndClockDifferential pingAndClockDifferential[ PING_TIMES_ARRAY_SIZE ];  /// last x ping times and calculated clock differentials with it
-		RakNet::Time pingAndClockDifferentialWriteIndex;  /// The index we are writing into the pingAndClockDifferential circular buffer
-		unsigned short lowestPing; ///The lowest ping value encountered
-		RakNet::Time nextPingTime;  /// When to next ping this player
-		RakNet::Time lastReliableSend; /// When did the last reliable send occur.  Reliable sends must occur at least once every timeoutTime/2 units to notice disconnects
-		RakNet::Time connectionTime; /// connection time, if active.
-//		int connectionSocketIndex; // index into connectionSockets to send back on.
-		RakNetGUID guid;
-		int MTUSize;
-		// Reference counted socket to send back on
-		RakNetSocket2* rakNetSocket;
-		SystemIndex remoteSystemIndex;
-
-#if LIBCAT_SECURITY==1
-		// Cached answer used internally by RakPeer to prevent DoS attacks based on the connexion handshake
-		char answer[cat::EasyHandshake::ANSWER_BYTES];
-
-		// If the server has bRequireClientKey = true, then this is set to the validated public key of the connected client
-		// Valid after connectMode reaches HANDLING_CONNECTION_REQUEST
-		char client_public_key[cat::EasyHandshake::PUBLIC_KEY_BYTES];
-#endif
-
-		enum ConnectMode {NO_ACTION, DISCONNECT_ASAP, DISCONNECT_ASAP_SILENTLY, DISCONNECT_ON_NO_ACK, REQUESTED_CONNECTION, HANDLING_CONNECTION_REQUEST, UNVERIFIED_SENDER, CONNECTED} connectMode;
-	};
 
 	// DS_APR
 	//void ProcessChromePacket(RakNetSocket2 *s, const char *buffer, int dataSize, const SystemAddress& recvFromAddress, RakNet::TimeUS timeRead);
@@ -879,7 +843,7 @@ protected:
 		char orderingChannel;
 		AddressOrGUID systemIdentifier;
 		bool broadcast;
-		RemoteSystemStruct::ConnectMode connectionMode;
+        RemoteSystemStruct::ConnectMode connectionMode;
 		NetworkID networkID;
 		bool blockingCommand; // Only used for RPC
 		char *data;

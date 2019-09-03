@@ -53,6 +53,10 @@
 
 #define RESEND_TREE_ORDER 32
 
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+struct IKCPCB;
+#endif
+
 namespace RakNet {
 
 	/// Forward declarations
@@ -61,7 +65,7 @@ class RakNetRandom;
 typedef uint64_t reliabilityHeapWeightType;
 
 
-
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 class SortedSplittedPackets
 {
 private:
@@ -153,6 +157,7 @@ struct SplitPacketChannel//<SplitPacketChannel>
 
 };
 int RAK_DLL_EXPORT SplitPacketChannelComp( SplitPacketIdType const &key, SplitPacketChannel* const &data );
+#endif
 
 // Helper class
 struct BPSTracker
@@ -187,6 +192,8 @@ struct BPSTracker
 //	void ClearExpired2(RakNet::TimeUS time);
 };
 
+struct RemoteSystem;
+
 /// Datagram reliable, ordered, unordered and sequenced sends.  Flow control.  Message splitting, reassembly, and coalescence.
 class ReliabilityLayer//<ReliabilityLayer>
 {
@@ -199,7 +206,7 @@ public:
 	~ReliabilityLayer();
 
 	/// Resets the layer for reuse
-	void Reset( bool resetVariables, int MTUSize, bool _useSecurity );
+	void Reset(bool resetVariables, int MTUSize, bool _useSecurity );
 
 	/// Set the time, in MS, to use before considering ourselves disconnected after not being able to deliver a reliable packet
 	/// Default time is 10,000 or 10 seconds in release and 30,000 or 30 seconds in debug.
@@ -221,7 +228,8 @@ public:
 	/// \retval false Modified packet
 	bool HandleSocketReceiveFromConnectedPlayer(
 		const char *buffer, unsigned int length, SystemAddress &systemAddress, DataStructures::List<PluginInterface2*> &messageHandlerList, int MTUSize,
-		RakNetSocket2 *s, RakNetRandom *rnr, CCTimeType timeRead, BitStream &updateBitStream);
+        RemoteSystem& remoteSystem,
+        RakNetRandom *rnr, CCTimeType timeRead, BitStream &updateBitStream);
 
 	/// This allocates bytes and writes a user-level message to those bytes.
 	/// \param[out] data The message
@@ -239,7 +247,9 @@ public:
 	/// \param[in] currentTime Current time, as per RakNet::GetTimeMS()
 	/// \param[in] receipt This number will be returned back with ID_SND_RECEIPT_ACKED or ID_SND_RECEIPT_LOSS and is only returned with the reliability types that contain RECEIPT in the name
 	/// \return True or false for success or failure.
-	bool Send( char *data, BitSize_t numberOfBitsToSend, PacketPriority priority, PacketReliability reliability, unsigned char orderingChannel, bool makeDataCopy, int MTUSize, CCTimeType currentTime, uint32_t receipt );
+	bool Send( 
+        RemoteSystem& remoteSystem,
+        char *data, BitSize_t numberOfBitsToSend, PacketPriority priority, PacketReliability reliability, unsigned char orderingChannel, bool makeDataCopy, int MTUSize, CCTimeType currentTime, uint32_t receipt );
 
 	/// Call once per game cycle.  Handles internal lists and actually does the send.
 	/// \param[in] s the communication  end point
@@ -255,10 +265,10 @@ public:
 	
 	/// Were you ever unable to deliver a packet despite retries?
 	/// \return true means the connection has been lost.  Otherwise not.
-	bool IsDeadConnection( void ) const;
+    bool IsDeadConnection(void) const { return deadConnection; }
 
 	/// Causes IsDeadConnection to return true
-	void KillConnection(void);
+    void KillConnection(void) { deadConnection = true; }
 
 	/// Get Statistics
 	/// \return A pointer to a static struct, filled out with current statistical information.
@@ -275,7 +285,9 @@ public:
 	/// \return If you previously called ApplyNetworkSimulator
 	bool IsNetworkSimulatorActive( void );
 
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	void SetSplitMessageProgressInterval(int interval);
+#endif
 	void SetUnreliableTimeout(RakNet::TimeMS timeoutMS);
 	/// Has a lot of time passed since the last ack
 	bool AckTimeout(RakNet::Time curTime);
@@ -284,7 +296,9 @@ public:
 #if INCLUDE_TIMESTAMP_WITH_DATAGRAMS==1
 	CCTimeType GetAckPing(void) const;
 #endif
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	RakNet::TimeMS GetTimeLastDatagramArrived(void) const {return timeLastDatagramArrived;}
+#endif
 
 	// If true, will update time between packets quickly based on ping calculations
 	//void SetDoFastThroughputReactions(bool fast);
@@ -292,13 +306,36 @@ public:
 	// Encoded as numMessages[unsigned int], message1BitLength[unsigned int], message1Data (aligned), ...
 	//void GetUndeliveredMessages(RakNet::BitStream *messages, int MTUSize);
 
-private:
 	/// Send the contents of a bitstream to the socket
 	/// \param[in] s The socket used for sending data
 	/// \param[in] systemAddress The address and port to send to
 	/// \param[in] bitStream The data to send.
 	void SendBitStream( RakNetSocket2 *s, SystemAddress &systemAddress, RakNet::BitStream *bitStream, RakNetRandom *rnr, CCTimeType currentTime);
+private:
+    void InitializeVariables(void);
 
+#ifdef _DEBUG
+    struct DataAndTime//<InternalPacket>
+    {
+        RakNetSocket2 *s;
+        char data[MAXIMUM_MTU_SIZE];
+        unsigned int length;
+        RakNet::TimeMS sendTime;
+        //	SystemAddress systemAddress;
+        unsigned short remotePortRakNetWasStartedOn_PS3;
+        unsigned int extraSocketOptions;
+    };
+    DataStructures::Queue<DataAndTime*> delayList;
+
+    // Internet simulator
+    double packetloss;
+    RakNet::TimeMS minExtraPing, extraPingVariance;
+#endif
+
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+    struct IKCPCB* myOrderedStreams[NUMBER_OF_ORDERED_STREAMS] = { 0 };
+    uint16_t myNextReceiveIndex = 0;
+#else
 	///Parse an internalPacket and create a bitstream to represent this data
 	/// \return Returns number of bits used
 	BitSize_t WriteToBitStreamFromInternalPacket( RakNet::BitStream *bitStream, const InternalPacket *const internalPacket, CCTimeType curTime );
@@ -373,9 +410,6 @@ private:
 
 	/// Memory handling
 	void FreeThreadSafeMemory( void );
-
-	// Initialize the variables
-	void InitializeVariables( void );
 
 	/// Given the current time, is this time so old that we should consider it a timeout?
 	bool IsExpiredTime(unsigned int input, CCTimeType currentTime) const;
@@ -486,13 +520,11 @@ private:
 	MessageNumberType internalOrderIndex;
 	//unsigned int windowSize;
 	//RakNet::BitStream updateBitStream;
-	bool deadConnection, cheater;
+	bool cheater;
 	SplitPacketIdType splitPacketId;
-	RakNet::TimeMS timeoutTime; // How long to wait in MS before timing someone out
 	//int MAX_AVERAGE_PACKETS_PER_SECOND; // Name says it all
 //	int RECEIVED_PACKET_LOG_LENGTH, requestedReceivedPacketLogLength; // How big the receivedPackets array is
 //	unsigned int *receivedPackets;
-	RakNetStatistics statistics;
 
 	// Algorithm for blending ordered and sequenced on the same channel:
 	// 1. Each ordered message transmits OrderingIndexType orderedWriteIndex. There are NUMBER_OF_ORDERED_STREAMS independent values of these. The value
@@ -569,29 +601,10 @@ private:
 
 	unsigned receivePacketCount;
 
-#ifdef _DEBUG
-	struct DataAndTime//<InternalPacket>
-	{
-		RakNetSocket2 *s;
-		char data[ MAXIMUM_MTU_SIZE ];
-		unsigned int length;
-		RakNet::TimeMS sendTime;
-		//	SystemAddress systemAddress;
-		unsigned short remotePortRakNetWasStartedOn_PS3;
-		unsigned int extraSocketOptions;
-	};
-	DataStructures::Queue<DataAndTime*> delayList;
-
-	// Internet simulator
-	double packetloss;
-	RakNet::TimeMS minExtraPing, extraPingVariance;
-#endif
-
 	CCTimeType elapsedTimeSinceLastUpdate;
 
 	CCTimeType nextAckTimeToSend;
 
-	
 #if RAKNET_ARQ == RAKNET_ARQ_UDT
     RakNet::CCRakNetUDT congestionManager;
 #elif RAKNET_ARQ == RAKNET_ARQ_SLIDING_WINDOW
@@ -650,10 +663,12 @@ private:
 	void AllocInternalPacketData(InternalPacket *internalPacket, unsigned int numBytes, bool allowStack, const char *file, unsigned int line);
 	void FreeInternalPacketData(InternalPacket *internalPacket, const char *file, unsigned int line);
 	DataStructures::MemoryPool<InternalPacketRefCountedData> refCountedDataPool;
-
-	BPSTracker bpsMetrics[RNS_PER_SECOND_METRICS_COUNT];
-	CCTimeType lastBpsClear;
-
+#endif
+    RakNetStatistics statistics;
+    BPSTracker bpsMetrics[RNS_PER_SECOND_METRICS_COUNT];
+    RakNet::TimeMS timeoutTime; // How long to wait in MS before timing someone out
+    CCTimeType lastBpsClear;
+    bool deadConnection = false;
 #if LIBCAT_SECURITY==1
 public:
 	cat::AuthenticatedEncryption* GetAuthenticatedEncryption(void) { return &auth_enc; }

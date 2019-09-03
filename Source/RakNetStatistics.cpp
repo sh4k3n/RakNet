@@ -50,6 +50,7 @@ void RAK_DLL_EXPORT RakNet::StatisticsToString( RakNetStatistics *s, char *buffe
 			"Total actual bytes sent            %" PRINTF_64_BIT_MODIFIER "u\n"
 			"Total actual bytes received        %" PRINTF_64_BIT_MODIFIER "u\n"
 			"Total message bytes pushed         %" PRINTF_64_BIT_MODIFIER "u\n"
+            "Protocol overhead                  %.1f%%\n"
 			"Current packetloss                 %.1f%%\n"
 			"Average packetloss                 %.1f%%\n"
 			"Elapsed connection time in seconds %" PRINTF_64_BIT_MODIFIER "u\n",
@@ -59,6 +60,11 @@ void RAK_DLL_EXPORT RakNet::StatisticsToString( RakNetStatistics *s, char *buffe
 			(long long unsigned int) s->runningTotal[ACTUAL_BYTES_SENT],
 			(long long unsigned int) s->runningTotal[ACTUAL_BYTES_RECEIVED],
 			(long long unsigned int) s->runningTotal[USER_MESSAGE_BYTES_PUSHED],
+
+            s->runningTotal[USER_MESSAGE_BYTES_PUSHED] > 0 ?
+            float(s->runningTotal[ACTUAL_BYTES_SENT] - s->runningTotal[USER_MESSAGE_BYTES_PUSHED]) * 100.0f / 
+            s->runningTotal[USER_MESSAGE_BYTES_PUSHED] : 0.0f,
+
 			s->packetlossLastSecond*100.0f,
 			s->packetlossTotal*100.0f,
 			(long long unsigned int) (uint64_t)((RakNet::GetTimeUS()-s->connectionStartTime)/1000000)
