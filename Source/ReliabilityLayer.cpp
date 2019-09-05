@@ -35,8 +35,7 @@ namespace RakNet
         RemoteSystem& remoteSystem = *static_cast<RemoteSystem*>(user);
 
         BitStream bitStream((unsigned char*)buf, len, true);
-        remoteSystem.reliabilityLayer.SendBitStream(remoteSystem.rakNetSocket,
-            remoteSystem.systemAddress, &bitStream, nullptr,
+        remoteSystem.reliabilityLayer.SendBitStream(remoteSystem, &bitStream, nullptr,
             RakNet::GetTimeUS() / 1000); // TODO: Use update time
         return 0;
     }
@@ -46,7 +45,7 @@ namespace RakNet
         if (ikcp == nullptr)
         {
             ikcp = ikcp_create(channel, &remoteSystem);
-            ikcp_nodelay(ikcp, 0, 10, 1, 0);
+            ikcp_nodelay(ikcp, 1, 20, 2, 0);
             ikcp->output = SendKCPPacket;
             //ikcp_update(ikcp, currentTime);
         }
@@ -342,11 +341,6 @@ ReliabilityLayer::ReliabilityLayer()
 	timeoutTime=10000;
 #endif
 
-#ifdef _DEBUG
-	minExtraPing=extraPingVariance=0;
-	packetloss=(double) minExtraPing;	
-#endif
-
 	InitializeVariables();
 #if RAKNET_ARQ != RAKNET_ARQ_KCP
     //int i = sizeof(InternalPacket);
@@ -634,12 +628,6 @@ void ReliabilityLayer::FreeThreadSafeMemory( void )
 
 	outgoingPacketBuffer.Clear(true, _FILE_AND_LINE_);
 
-#ifdef _DEBUG
-	for (unsigned i = 0; i < delayList.Size(); i++ )
-		RakNet::OP_DELETE(delayList[ i ], __FILE__, __LINE__);
-	delayList.Clear(__FILE__, __LINE__);
-#endif
-
     unreliableWithAckReceiptHistory.Clear(false, _FILE_AND_LINE_);
 
 	packetsToSendThisUpdate.Clear(false, _FILE_AND_LINE_);
@@ -698,10 +686,6 @@ bool ReliabilityLayer::HandleSocketReceiveFromConnectedPlayer(
     RakNetRandom *rnr, CCTimeType timeRead,
 	BitStream &updateBitStream)
 {
-#if RAKNET_ARQ != RAKNET_ARQ_KCP
-    RakNetSocket2 *s = remoteSystem.rakNetSocket;
-#endif
-
 #ifdef _DEBUG
 	RakAssert( !( buffer == 0 ) );
 #endif
@@ -710,7 +694,8 @@ bool ReliabilityLayer::HandleSocketReceiveFromConnectedPlayer(
 	timeRead/=1000;
 #endif
 
-	bpsMetrics[(int) ACTUAL_BYTES_RECEIVED].Push1(timeRead,length);
+    timeLastDatagramArrived = RakNet::GetTimeMS();
+    bpsMetrics[(int) ACTUAL_BYTES_RECEIVED].Push1(timeRead,length + UDP_HEADER_SIZE);
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
     auto orderingChannel = ikcp_getconv(buffer);
     if (orderingChannel < NUMBER_OF_ORDERED_STREAMS)
@@ -732,8 +717,6 @@ bool ReliabilityLayer::HandleSocketReceiveFromConnectedPlayer(
 			messageHandlerList[messageHandlerIndex]->OnReliabilityLayerNotification("length <= 2 || buffer == 0", BYTES_TO_BITS(length), systemAddress, true);
 		return true;
 	}
-
-	timeLastDatagramArrived=RakNet::GetTimeMS();
 
 	//	CCTimeType time;
 //	bool indexFound;
@@ -1124,175 +1107,6 @@ bool ReliabilityLayer::HandleSocketReceiveFromConnectedPlayer(
 					hasReceivedPacketQueue.Compress(_FILE_AND_LINE_);
 
 
-				/*
-				if ( internalPacket->reliability == RELIABLE_SEQUENCED || internalPacket->reliability == UNRELIABLE_SEQUENCED )
-				{
-#ifdef _DEBUG
-					RakAssert( internalPacket->orderingChannel < NUMBER_OF_ORDERED_STREAMS );
-#endif
-
-					if ( internalPacket->orderingChannel >= NUMBER_OF_ORDERED_STREAMS )
-					{
-
-						FreeInternalPacketData(internalPacket, _FILE_AND_LINE_ );
-						ReleaseToInternalPacketPool( internalPacket );
-
-						for (unsigned int messageHandlerIndex=0; messageHandlerIndex < messageHandlerList.Size(); messageHandlerIndex++)
-							messageHandlerList[messageHandlerIndex]->OnReliabilityLayerNotification("internalPacket->orderingChannel >= NUMBER_OF_ORDERED_STREAMS", BYTES_TO_BITS(length), systemAddress);			
-
-						bpsMetrics[(int) USER_MESSAGE_BYTES_RECEIVED_IGNORED].Push1(timeRead,BITS_TO_BYTES(internalPacket->dataBitLength));
-
-						goto CONTINUE_SOCKET_DATA_PARSE_LOOP;
-					}
-
-					if ( IsOlderOrderedPacket( internalPacket->orderingIndex, waitingForSequencedPacketReadIndex[ internalPacket->orderingChannel ] ) == false )
-					{
-						// Is this a split packet?
-						if ( internalPacket->splitPacketCount > 0 )
-						{
-							// Generate the split
-							// Verify some parameters to make sure we don't get junk data
-
-
-							// Check for a rebuilt packet
-							InsertIntoSplitPacketList( internalPacket, timeRead );
-							bpsMetrics[(int) USER_MESSAGE_BYTES_RECEIVED_PROCESSED].Push1(timeRead,BITS_TO_BYTES(internalPacket->dataBitLength));
-
-							// Sequenced
-							internalPacket = BuildPacketFromSplitPacketList( internalPacket->splitPacketId, timeRead,
-								s, systemAddress, rnr, remotePortRakNetWasStartedOn_PS3, extraSocketOptions);
-
-							if ( internalPacket )
-							{
-								// Update our index to the newest packet
-								waitingForSequencedPacketReadIndex[ internalPacket->orderingChannel ] = internalPacket->orderingIndex + (OrderingIndexType)1;
-
-								// If there is a rebuilt packet, add it to the output queue
-								outputQueue.Push( internalPacket, _FILE_AND_LINE_  );
-								internalPacket = 0;
-							}
-
-							// else don't have all the parts yet
-						}
-						else
-						{
-							// Update our index to the newest packet
-							waitingForSequencedPacketReadIndex[ internalPacket->orderingChannel ] = internalPacket->orderingIndex + (OrderingIndexType)1;
-
-							// Not a split packet. Add the packet to the output queue
-							bpsMetrics[(int) USER_MESSAGE_BYTES_RECEIVED_PROCESSED].Push1(timeRead,BITS_TO_BYTES(internalPacket->dataBitLength));
-							outputQueue.Push( internalPacket, _FILE_AND_LINE_  );
-							internalPacket = 0;
-						}
-					}
-					else
-					{
-						// Older sequenced packet. Discard it
-						FreeInternalPacketData(internalPacket, _FILE_AND_LINE_ );
-						ReleaseToInternalPacketPool( internalPacket );
-
-						bpsMetrics[(int) USER_MESSAGE_BYTES_RECEIVED_IGNORED].Push1(timeRead,BITS_TO_BYTES(internalPacket->dataBitLength));
-
-					}
-
-					goto CONTINUE_SOCKET_DATA_PARSE_LOOP;
-					}
-
-				// Is this an unsequenced split packet?
-				if ( internalPacket->splitPacketCount > 0 )
-				{
-					// Check for a rebuilt packet
-					if ( internalPacket->reliability != RELIABLE_ORDERED )
-						internalPacket->orderingChannel = 255; // Use 255 to designate not sequenced and not ordered
-
-					InsertIntoSplitPacketList( internalPacket, timeRead );
-
-					internalPacket = BuildPacketFromSplitPacketList( internalPacket->splitPacketId, timeRead,
-						s, systemAddress, rnr, remotePortRakNetWasStartedOn_PS3, extraSocketOptions);
-
-					if ( internalPacket == 0 )
-					{
-
-						// Don't have all the parts yet
-						goto CONTINUE_SOCKET_DATA_PARSE_LOOP;
-					}
-				}
-				*/
-
-				/*
-				if ( internalPacket->reliability == RELIABLE_ORDERED )
-				{
-#ifdef _DEBUG
-					RakAssert( internalPacket->orderingChannel < NUMBER_OF_ORDERED_STREAMS );
-#endif
-
-					if ( internalPacket->orderingChannel >= NUMBER_OF_ORDERED_STREAMS )
-					{
-						// Invalid packet
-						FreeInternalPacketData(internalPacket, _FILE_AND_LINE_ );
-						ReleaseToInternalPacketPool( internalPacket );
-
-						bpsMetrics[(int) USER_MESSAGE_BYTES_RECEIVED_IGNORED].Push1(timeRead,BITS_TO_BYTES(internalPacket->dataBitLength));
-
-						goto CONTINUE_SOCKET_DATA_PARSE_LOOP;
-					}
-
-					bpsMetrics[(int) USER_MESSAGE_BYTES_RECEIVED_PROCESSED].Push1(timeRead,BITS_TO_BYTES(internalPacket->dataBitLength));
-
-					if ( waitingForOrderedPacketReadIndex[ internalPacket->orderingChannel ] == internalPacket->orderingIndex )
-					{
-						// Get the list to hold ordered packets for this stream
-						DataStructures::LinkedList<InternalPacket*> *orderingListAtOrderingStream;
-						unsigned char orderingChannelCopy = internalPacket->orderingChannel;
-
-						// Push the packet for the user to read
-						outputQueue.Push( internalPacket, _FILE_AND_LINE_  );
-						internalPacket = 0; // Don't reference this any longer since other threads access it
-
-						// Wait for the resendNext ordered packet in sequence
-						waitingForOrderedPacketReadIndex[ orderingChannelCopy ] ++; // This wraps
-
-						orderingListAtOrderingStream = GetOrderingListAtOrderingStream( orderingChannelCopy );
-
-						if ( orderingListAtOrderingStream != 0)
-						{
-							while ( orderingListAtOrderingStream->Size() > 0 )
-							{
-								// Cycle through the list until nothing is found
-								orderingListAtOrderingStream->Beginning();
-								indexFound=false;
-								size=orderingListAtOrderingStream->Size();
-								count=0;
-
-								while (count++ < size)
-								{
-									if ( orderingListAtOrderingStream->Peek()->orderingIndex == waitingForOrderedPacketReadIndex[ orderingChannelCopy ] )
-									{
-										outputQueue.Push( orderingListAtOrderingStream->Pop(), _FILE_AND_LINE_  );
-										waitingForOrderedPacketReadIndex[ orderingChannelCopy ]++;
-										indexFound=true;
-									}
-									else
-										(*orderingListAtOrderingStream)++;
-								}
-
-								if (indexFound==false)
-									break;
-							}
-						}
-						internalPacket = 0;
-					}
-					else
-					{
-						// This is a newer ordered packet than we are waiting for. Store it for future use
-						AddToOrderingList( internalPacket );
-					}
-
-
-					goto CONTINUE_SOCKET_DATA_PARSE_LOOP;
-				}
-				*/
-
 				// Is this a split packet? If so then reassemble
 				if ( internalPacket->splitPacketCount > 0 )
 				{
@@ -1302,8 +1116,8 @@ bool ReliabilityLayer::HandleSocketReceiveFromConnectedPlayer(
 
 					InsertIntoSplitPacketList( internalPacket, timeRead );
 
-					internalPacket = BuildPacketFromSplitPacketList( internalPacket->splitPacketId, timeRead,
-						s, systemAddress, rnr, updateBitStream);
+					internalPacket = BuildPacketFromSplitPacketList(internalPacket->splitPacketId, timeRead,
+                        remoteSystem, rnr, updateBitStream);
 
 					if ( internalPacket == 0 )
 					{
@@ -1566,7 +1380,7 @@ bool ReliabilityLayer::Send(
     RakAssert(false);
     return false;
 #else
-
+    (void)(remoteSystem);
 	InternalPacket * internalPacket = AllocateFromInternalPacketPool();
 	if (internalPacket==0)
 	{
@@ -1684,7 +1498,7 @@ bool ReliabilityLayer::Send(
 //-------------------------------------------------------------------------------------------------------
 // Run this once per game cycle.  Handles internal lists and actually does the send
 //-------------------------------------------------------------------------------------------------------
-void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, int MTUSize, CCTimeType time,
+void ReliabilityLayer::Update( RemoteSystem& remoteSystem, int MTUSize, CCTimeType time,
 							  unsigned bitsPerSecondLimit,
 							  DataStructures::List<PluginInterface2*> &messageHandlerList,
 							  RakNetRandom *rnr,
@@ -1701,28 +1515,8 @@ void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, i
 	timeMs=(RakNet::TimeMS) (time/(CCTimeType)1000);
 #endif
 
-#ifdef _DEBUG
-	while (delayList.Size())
-	{
-		if (static_cast<int>(RakNet::GetTimeMS() - delayList.Peek()->sendTime) >= 0)
-		{
-			DataAndTime *dat = delayList.Pop();
-//			SocketLayer::SendTo( dat->s, dat->data, dat->length, systemAddress, __FILE__, __LINE__  );
+    remoteSystem.networkSimulator.Update(RakNet::GetTimeMS());
 
-			RNS2_SendParameters bsp;
-			bsp.data = (char*) dat->data;
-			bsp.length = dat->length;
-			bsp.systemAddress = systemAddress;
-			dat->s->Send(&bsp, _FILE_AND_LINE_);
-
-			RakNet::OP_DELETE(dat,__FILE__,__LINE__);
-		}
-		else
-		{
-			break;
-		}
-	}
-#endif
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
     for (size_t i = 0; i < NUMBER_OF_ORDERED_STREAMS; ++i)
     {
@@ -1817,7 +1611,7 @@ void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, i
 
 	if (congestionManager.ShouldSendACKs(time,timeSinceLastTick))
 	{
-		SendACKs(s, systemAddress, time, rnr, updateBitStream);
+		SendACKs(remoteSystem, time, rnr, updateBitStream);
 	}
 
 	if (NAKs.Size()>0)
@@ -1829,7 +1623,7 @@ void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, i
 		dhfNAK.isPacketPair=false;
 		dhfNAK.Serialize(&updateBitStream);
 		NAKs.Serialize(&updateBitStream, GetMaxDatagramSizeExcludingMessageHeaderBits(), true);
-		SendBitStream( s, systemAddress, &updateBitStream, rnr, time );
+		SendBitStream( remoteSystem, &updateBitStream, rnr, time );
 	}
 
 	DatagramHeaderFormat dhf;
@@ -1952,7 +1746,9 @@ void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, i
 #if CC_TIME_TYPE_BYTES==4
 							messageHandlerList[messageHandlerIndex]->OnInternalPacket(internalPacket, packetsToSendThisUpdateDatagramBoundaries.Size()+congestionManager.GetNextDatagramSequenceNumber(), systemAddress, (RakNet::TimeMS) time, true);
 #else
-							messageHandlerList[messageHandlerIndex]->OnInternalPacket(internalPacket, packetsToSendThisUpdateDatagramBoundaries.Size()+congestionManager.GetNextDatagramSequenceNumber(), systemAddress, (RakNet::TimeMS)(time/(CCTimeType)1000), true);
+							messageHandlerList[messageHandlerIndex]->OnInternalPacket(internalPacket, 
+                                packetsToSendThisUpdateDatagramBoundaries.Size()+congestionManager.GetNextDatagramSequenceNumber(), 
+                                remoteSystem.systemAddress, (RakNet::TimeMS)(time/(CCTimeType)1000), true);
 #endif
 						}
 
@@ -2122,7 +1918,9 @@ void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, i
 #if CC_TIME_TYPE_BYTES==4
 						messageHandlerList[messageHandlerIndex]->OnInternalPacket(internalPacket, packetsToSendThisUpdateDatagramBoundaries.Size()+congestionManager.GetNextDatagramSequenceNumber(), systemAddress, (RakNet::TimeMS)time, true);
 #else
-						messageHandlerList[messageHandlerIndex]->OnInternalPacket(internalPacket, packetsToSendThisUpdateDatagramBoundaries.Size()+congestionManager.GetNextDatagramSequenceNumber(), systemAddress, (RakNet::TimeMS)(time/(CCTimeType)1000), true);
+						messageHandlerList[messageHandlerIndex]->OnInternalPacket(internalPacket, 
+                            packetsToSendThisUpdateDatagramBoundaries.Size()+congestionManager.GetNextDatagramSequenceNumber(), 
+                            remoteSystem.systemAddress, (RakNet::TimeMS)(time/(CCTimeType)1000), true);
 #endif
 					}
 					pushedAnything=true;
@@ -2221,7 +2019,7 @@ void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, i
 
 			congestionManager.OnSendBytes(time,UDP_HEADER_SIZE+DatagramHeaderFormat::GetDataHeaderByteLength());
 
-			SendBitStream( s, systemAddress, &updateBitStream, rnr, time );
+			SendBitStream( remoteSystem, &updateBitStream, rnr, time );
 
 			bandwidthExceededStatistic=outgoingPacketBuffer.Size()>0;
 			// 			bandwidthExceededStatistic=sendPacketSet[0].IsEmpty()==false ||
@@ -2257,62 +2055,14 @@ void ReliabilityLayer::Update( RakNetSocket2 *s, SystemAddress &systemAddress, i
 //-------------------------------------------------------------------------------------------------------
 // Writes a bitstream to the socket
 //-------------------------------------------------------------------------------------------------------
-void ReliabilityLayer::SendBitStream( RakNetSocket2 *s, SystemAddress &systemAddress, RakNet::BitStream *bitStream, RakNetRandom *rnr, CCTimeType currentTime)
+void ReliabilityLayer::SendBitStream( RemoteSystem& remoteSystem, RakNet::BitStream *bitStream, RakNetRandom *rnr, CCTimeType currentTime)
 {
-	(void) systemAddress;
 	(void) rnr;
 
 	unsigned int length;
 
 	length = (unsigned int) bitStream->GetNumberOfBytesUsed();
     bpsMetrics[(int)ACTUAL_BYTES_SENT].Push1(currentTime, length + UDP_HEADER_SIZE);
-
-#ifdef _DEBUG
-	if (packetloss > 0.0)
-	{
-		if (frandomMT() < packetloss)
-			return;
-	}
-
-	if (minExtraPing > 0 || extraPingVariance > 0)
-	{
-#ifdef FLIP_SEND_ORDER_TEST
-		// Flip order of sends without delaying them for testing
-		DataAndTime *dat = RakNet::OP_NEW<DataAndTime>(__FILE__,__LINE__);
-		memcpy(dat->data, ( char* ) bitStream->GetData(), length );
-		dat->s=s;
-		dat->length=length;
-		dat->sendTime = 0;
-		dat->remotePortRakNetWasStartedOn_PS3=remotePortRakNetWasStartedOn_PS3;
-		dat->extraSocketOptions=extraSocketOptions;
-		delayList.PushAtHead(dat, 0, _FILE_AND_LINE_);
-#else
-		RakNet::TimeMS delay = minExtraPing;
-		if (extraPingVariance>0)
-			delay += (randomMT() % extraPingVariance);
-		if (delay > 0)
-		{
-			DataAndTime *dat = RakNet::OP_NEW<DataAndTime>(__FILE__,__LINE__);
-			memcpy(dat->data, ( char* ) bitStream->GetData(), length );
-			dat->s=s;
-			dat->length=length;
-			dat->sendTime = RakNet::GetTimeMS() + delay;
-			for (unsigned int i=0; i < delayList.Size(); i++)
-			{
-				if (dat->sendTime < delayList[i]->sendTime)
-				{
-					delayList.PushAtHead(dat, i, __FILE__, __LINE__);
-					dat=0;
-					break;
-				}
-			}
-			if (dat!=0)
-				delayList.Push(dat,__FILE__,__LINE__);
-			return;
-		}
-#endif
-	}
-#endif
 
 #if LIBCAT_SECURITY==1
 	if (useSecurity)
@@ -2328,8 +2078,9 @@ void ReliabilityLayer::SendBitStream( RakNetSocket2 *s, SystemAddress &systemAdd
 	}
 #endif
 
-	// RakAssert(length <= congestionManager.GetMTU());
-
+#ifdef RAKNET_NETWORK_SIMULATOR
+    remoteSystem.networkSimulator.Send(*bitStream, RakNet::GetTimeMS(), remoteSystem);
+#else
 #ifdef USE_THREADED_SEND
 	SendToThread::SendToThreadBlock *block =  SendToThread::AllocateBlock();
 	memcpy(block->data, bitStream->GetData(), length);
@@ -2337,16 +2088,15 @@ void ReliabilityLayer::SendBitStream( RakNetSocket2 *s, SystemAddress &systemAdd
 	block->extraSocketOptions=extraSocketOptions;
 	block->remotePortRakNetWasStartedOn_PS3=remotePortRakNetWasStartedOn_PS3;
 	block->s=s;
-	block->systemAddress=systemAddress;
+	block->systemAddress= remoteSystem.systemAddress;
 	SendToThread::ProcessBlock(block);
 #else
-	// SocketLayer::SendTo( s, ( char* ) bitStream->GetData(), length, systemAddress, __FILE__, __LINE__  );
-
 	RNS2_SendParameters bsp;
 	bsp.data = (char*) bitStream->GetData();
 	bsp.length = length;
-	bsp.systemAddress = systemAddress;
-	s->Send(&bsp, _FILE_AND_LINE_);
+	bsp.systemAddress = remoteSystem.systemAddress;
+	remoteSystem.rakNetSocket->Send(&bsp, _FILE_AND_LINE_);
+#endif
 #endif
 }
 
@@ -2371,7 +2121,17 @@ bool ReliabilityLayer::IsOutgoingDataWaiting(void)
 		//resendTree.IsEmpty()==false;// || outputQueue.Size() > 0 || orderingList.Size() > 0 || splitPacketChannelList.Size() > 0;
 		statistics.messagesInResendBuffer!=0;
 #else
-    return true;
+    for (size_t i = 0; i < NUMBER_OF_ORDERED_STREAMS; ++i)
+    {
+        if (myOrderedStreams[i])
+        {
+            if (ikcp_waitsnd(myOrderedStreams[i]))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 #endif
 }
 bool ReliabilityLayer::AreAcksWaiting(void)
@@ -2379,18 +2139,7 @@ bool ReliabilityLayer::AreAcksWaiting(void)
 #if RAKNET_ARQ != RAKNET_ARQ_KCP
 	return acknowlegements.Size() > 0;
 #else
-    return true;
-#endif
-}
-//-------------------------------------------------------------------------------------------------------
-void ReliabilityLayer::ApplyNetworkSimulator( double _packetloss, RakNet::TimeMS _minExtraPing, RakNet::TimeMS _extraPingVariance )
-{
-#ifdef _DEBUG
-	packetloss=_packetloss;
-	minExtraPing=_minExtraPing;
-	extraPingVariance=_extraPingVariance;
-	//	if (ping < (unsigned int)(minExtraPing+extraPingVariance)*2)
-	//		ping=(minExtraPing+extraPingVariance)*2;
+    return IsOutgoingDataWaiting();
 #endif
 }
 //-------------------------------------------------------------------------------------------------------
@@ -3255,8 +3004,8 @@ InternalPacket * ReliabilityLayer::BuildPacketFromSplitPacketList( SplitPacketCh
 
 
 //-------------------------------------------------------------------------------------------------------
-InternalPacket * ReliabilityLayer::BuildPacketFromSplitPacketList( SplitPacketIdType splitPacketId, CCTimeType time,
-																  RakNetSocket2 *s, SystemAddress &systemAddress, RakNetRandom *rnr, 
+InternalPacket * ReliabilityLayer::BuildPacketFromSplitPacketList( SplitPacketIdType _splitPacketId, CCTimeType time,
+																  RemoteSystem& remoteSystem, RakNetRandom *rnr, 
 																  BitStream &updateBitStream)
 {
 	unsigned int i;
@@ -3265,7 +3014,7 @@ InternalPacket * ReliabilityLayer::BuildPacketFromSplitPacketList( SplitPacketId
 	InternalPacket * internalPacket;
 
 	// Find in splitPacketChannelList the SplitPacketChannel with this splitPacketId
-	i=splitPacketChannelList.GetIndexFromKey(splitPacketId, &objectExists);
+	i=splitPacketChannelList.GetIndexFromKey(_splitPacketId, &objectExists);
 	splitPacketChannel=splitPacketChannelList[i];
 	
 #if PREALLOCATE_LARGE_MESSAGES==1
@@ -3275,7 +3024,7 @@ InternalPacket * ReliabilityLayer::BuildPacketFromSplitPacketList( SplitPacketId
 #endif
 	{
 		// Ack immediately, because for large files this can take a long time
-		SendACKs(s, systemAddress, time, rnr, updateBitStream);
+		SendACKs(remoteSystem, time, rnr, updateBitStream);
 		internalPacket=BuildPacketFromSplitPacketList(splitPacketChannel,time);
 		splitPacketChannelList.RemoveAtIndex(i);
 		return internalPacket;
@@ -3447,7 +3196,7 @@ bool ReliabilityLayer::AckTimeout(RakNet::Time curTime)
 {
 	// I check timeLastDatagramArrived-curTime because with threading it is possible that timeLastDatagramArrived is
 	// slightly greater than curTime, in which case this is NOT an ack timeout
-    return false;//(timeLastDatagramArrived - curTime) > 10000 && curTime - timeLastDatagramArrived > timeoutTime;
+    return (timeLastDatagramArrived - curTime) > 10000 && curTime - timeLastDatagramArrived > timeoutTime;
 }
 #if RAKNET_ARQ != RAKNET_ARQ_KCP
 //-------------------------------------------------------------------------------------------------------
@@ -3631,7 +3380,7 @@ bool ReliabilityLayer::IsResendQueueEmpty(void) const
 	return resendLinkedListHead==0;
 }
 //-------------------------------------------------------------------------------------------------------
-void ReliabilityLayer::SendACKs(RakNetSocket2 *s, SystemAddress &systemAddress, CCTimeType time, RakNetRandom *rnr, BitStream &updateBitStream)
+void ReliabilityLayer::SendACKs(RemoteSystem& remoteSystem, CCTimeType time, RakNetRandom *rnr, BitStream &updateBitStream)
 {
 	BitSize_t maxDatagramPayload = GetMaxDatagramSizeExcludingMessageHeaderBits();
 
@@ -3665,7 +3414,7 @@ void ReliabilityLayer::SendACKs(RakNetSocket2 *s, SystemAddress &systemAddress, 
 		dhf.Serialize(&updateBitStream);
 		CC_DEBUG_PRINTF_1("AckSnd ");
 		acknowlegements.Serialize(&updateBitStream, maxDatagramPayload, true);
-		SendBitStream( s, systemAddress, &updateBitStream, rnr, time );
+		SendBitStream(remoteSystem, &updateBitStream, rnr, time );
 		congestionManager.OnSendAck(time,updateBitStream.GetNumberOfBytesUsed());
 
 		// I think this is causing a bug where if the estimated bandwidth is very low for the recipient, only acks ever get sent

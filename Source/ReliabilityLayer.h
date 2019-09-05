@@ -258,7 +258,7 @@ public:
 	/// \param[in] time current system time
 	/// \param[in] maxBitsPerSecond if non-zero, enforces that outgoing bandwidth does not exceed this amount
 	/// \param[in] messageHandlerList A list of registered plugins
-	void Update( RakNetSocket2 *s, SystemAddress &systemAddress, int MTUSize, CCTimeType time,
+	void Update(RemoteSystem& remoteSystem, int MTUSize, CCTimeType time,
 		unsigned bitsPerSecondLimit,
 		DataStructures::List<PluginInterface2*> &messageHandlerList,
 		RakNetRandom *rnr, BitStream &updateBitStream);
@@ -277,13 +277,6 @@ public:
 	///Are we waiting for any data to be sent out or be processed by the player?
 	bool IsOutgoingDataWaiting(void);
 	bool AreAcksWaiting(void);
-
-	// Set outgoing lag and packet loss properties
-	void ApplyNetworkSimulator( double _maxSendBPS, RakNet::TimeMS _minExtraPing, RakNet::TimeMS _extraPingVariance );
-
-	/// Returns if you previously called ApplyNetworkSimulator
-	/// \return If you previously called ApplyNetworkSimulator
-	bool IsNetworkSimulatorActive( void );
 
 #if RAKNET_ARQ != RAKNET_ARQ_KCP
 	void SetSplitMessageProgressInterval(int interval);
@@ -310,27 +303,9 @@ public:
 	/// \param[in] s The socket used for sending data
 	/// \param[in] systemAddress The address and port to send to
 	/// \param[in] bitStream The data to send.
-	void SendBitStream( RakNetSocket2 *s, SystemAddress &systemAddress, RakNet::BitStream *bitStream, RakNetRandom *rnr, CCTimeType currentTime);
+	void SendBitStream( RemoteSystem& remoteSystem, RakNet::BitStream *bitStream, RakNetRandom *rnr, CCTimeType currentTime);
 private:
     void InitializeVariables(void);
-
-#ifdef _DEBUG
-    struct DataAndTime//<InternalPacket>
-    {
-        RakNetSocket2 *s;
-        char data[MAXIMUM_MTU_SIZE];
-        unsigned int length;
-        RakNet::TimeMS sendTime;
-        //	SystemAddress systemAddress;
-        unsigned short remotePortRakNetWasStartedOn_PS3;
-        unsigned int extraSocketOptions;
-    };
-    DataStructures::Queue<DataAndTime*> delayList;
-
-    // Internet simulator
-    double packetloss;
-    RakNet::TimeMS minExtraPing, extraPingVariance;
-#endif
 
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
     struct IKCPCB* myOrderedStreams[NUMBER_OF_ORDERED_STREAMS] = { 0 };
@@ -386,7 +361,7 @@ private:
 
 	/// Take all split chunks with the specified splitPacketId and try to reconstruct a packet. If we can, allocate and return it.  Otherwise return 0
 	InternalPacket * BuildPacketFromSplitPacketList( SplitPacketIdType splitPacketId, CCTimeType time,
-		RakNetSocket2 *s, SystemAddress &systemAddress, RakNetRandom *rnr, BitStream &updateBitStream);
+        RemoteSystem& remoteSystem, RakNetRandom *rnr, BitStream &updateBitStream);
 	InternalPacket * BuildPacketFromSplitPacketList( SplitPacketChannel *splitPacketChannel, CCTimeType time );
 
 	/// Delete any unreliable split packets that have long since expired
@@ -496,7 +471,6 @@ private:
 	// Set to the current time if it is not zero, and we get incoming data
 	// If the current time - timeResendQueueNonEmpty is greater than a threshold, we are disconnected
 //	CCTimeType timeResendQueueNonEmpty;
-	RakNet::TimeMS timeLastDatagramArrived;
 
 
 	// If we backoff due to packetloss, don't remeasure until all waiting resends have gone out or else we overcount
@@ -626,7 +600,7 @@ private:
 	void PopListHead(bool modifyUnacknowledgedBytes);
 	bool IsResendQueueEmpty(void) const;
 	void SortSplitPacketList(DataStructures::List<InternalPacket*> &data, unsigned int leftEdge, unsigned int rightEdge) const;
-	void SendACKs(RakNetSocket2 *s, SystemAddress &systemAddress, CCTimeType time, RakNetRandom *rnr, BitStream &updateBitStream);
+	void SendACKs(RemoteSystem& remoteSystem, CCTimeType time, RakNetRandom *rnr, BitStream &updateBitStream);
 
 	DataStructures::List<InternalPacket*> packetsToSendThisUpdate;
 	DataStructures::List<bool> packetsToDeallocThisUpdate;
@@ -664,6 +638,7 @@ private:
 	void FreeInternalPacketData(InternalPacket *internalPacket, const char *file, unsigned int line);
 	DataStructures::MemoryPool<InternalPacketRefCountedData> refCountedDataPool;
 #endif
+    RakNet::TimeMS timeLastDatagramArrived;
     RakNetStatistics statistics;
     BPSTracker bpsMetrics[RNS_PER_SECOND_METRICS_COUNT];
     RakNet::TimeMS timeoutTime; // How long to wait in MS before timing someone out

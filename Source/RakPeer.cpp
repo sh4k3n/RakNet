@@ -635,8 +635,8 @@ StartupResult RakPeer::Startup( unsigned int maxConnections, SocketDescriptor *s
 			remoteSystemList[ i ].connectMode=RemoteSystemStruct::NO_ACTION;
 			remoteSystemList[ i ].MTUSize = defaultMTUSize;
 			remoteSystemList[ i ].remoteSystemIndex = (SystemIndex) i;
-#ifdef _DEBUG
-			remoteSystemList[ i ].reliabilityLayer.ApplyNetworkSimulator(_packetloss, _minExtraPing, _extraPingVariance);
+#ifdef RAKNET_NETWORK_SIMULATOR
+			remoteSystemList[ i ].networkSimulator.Configure(_packetloss, _minExtraPing, _extraPingVariance);
 #endif
 
 			// All entries in activeSystemList have valid pointers all the time.
@@ -2968,13 +2968,13 @@ void RakPeer::ReleaseSockets( DataStructures::List<RakNetSocket2* > &sockets )
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void RakPeer::ApplyNetworkSimulator( float packetloss, unsigned short minExtraPing, unsigned short extraPingVariance)
 {
-#ifdef _DEBUG
+#ifdef RAKNET_NETWORK_SIMULATOR
 	if (remoteSystemList)
 	{
 		unsigned short i;
 		for (i=0; i < maximumNumberOfPeers; i++)
 			//for (i=0; i < remoteSystemListSize; i++)
-			remoteSystemList[i].reliabilityLayer.ApplyNetworkSimulator(packetloss, minExtraPing, extraPingVariance);
+			remoteSystemList[i].networkSimulator.Configure(packetloss, minExtraPing, extraPingVariance);
 	}
 
 	_packetloss=packetloss;
@@ -5936,7 +5936,7 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 				}
 			}
 
-			remoteSystem->reliabilityLayer.Update( remoteSystem->rakNetSocket, systemAddress, remoteSystem->MTUSize, timeNS, maxOutgoingBPS, pluginListNTS, &rnr, updateBitStream ); // systemAddress only used for the internet simulator test
+			remoteSystem->reliabilityLayer.Update( *remoteSystem, remoteSystem->MTUSize, timeNS, maxOutgoingBPS, pluginListNTS, &rnr, updateBitStream ); // systemAddress only used for the internet simulator test
 
 			// Check for failure conditions
 			if ( remoteSystem->reliabilityLayer.IsDeadConnection() ||

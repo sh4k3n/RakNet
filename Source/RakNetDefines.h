@@ -126,6 +126,10 @@
 #define RAKNET_ARQ RAKNET_ARQ_SLIDING_WINDOW
 #endif
 
+#ifdef _DEBUG
+#define RAKNET_NETWORK_SIMULATOR
+#endif
+
 // When a large message is arriving, preallocate the memory for the entire block
 // This results in large messages not taking up time to reassembly with memcpy, but is vulnerable to attackers causing the host to run out of memory
 #ifndef PREALLOCATE_LARGE_MESSAGES
