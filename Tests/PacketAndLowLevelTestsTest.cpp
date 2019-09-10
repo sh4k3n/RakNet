@@ -45,6 +45,13 @@ AttachPlugin
 DetachPlugin
 
 */
+TEST_CASE("PacketAndLowLevelTestsTest")
+{
+    PacketAndLowLevelTestsTest test;
+    REQUIRE(test.Run() == 0);
+}
+
+
 int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 	RakPeerInterface *server,*client;

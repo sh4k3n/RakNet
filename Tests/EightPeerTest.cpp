@@ -31,6 +31,13 @@ All packets are not recieved.
 All packets are not in order.
 Disconnection.
 */
+
+TEST_CASE("EightPeerTest")
+{
+    EightPeerTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int EightPeerTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 	const int peerNum= 8;
@@ -56,10 +63,10 @@ int EightPeerTest::RunTest(DataStructures::List<RakString> params,bool isVerbose
 			lastNumberReceivedFromList[i][j]=0;
 		}
 
-		peerList[i]->Startup(peerNum*2, &SocketDescriptor(60000+i,0), 1);
+		auto result = peerList[i]->Startup(peerNum*2, &SocketDescriptor(60000+i,0), 1);
+        REQUIRE(result == RAKNET_STARTED);
 		peerList[i]->SetMaximumIncomingConnections(peerNum);
-
-	}
+    }
 
 	//Connect all the peers together
 	for (int i=0;i<peerNum;i++)

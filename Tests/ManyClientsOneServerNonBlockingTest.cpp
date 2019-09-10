@@ -38,6 +38,13 @@ During the very first connect loop any connect returns false.
 Connect function returns false and peer is not connected to anything.
 
 */
+
+TEST_CASE("ManyClientsOneServerNonBlockingTest")
+{
+    ManyClientsOneServerNonBlockingTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int ManyClientsOneServerNonBlockingTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 
@@ -116,9 +123,7 @@ int ManyClientsOneServerNonBlockingTest::RunTest(DataStructures::List<RakString>
 
 		for (int i=0;i<clientNum;i++)
 		{
-
-			currentSystem.SetBinaryAddress("127.0.0.1");
-			currentSystem.port=60000;
+            currentSystem = SystemAddress("127.0.0.1", 60000);
 			if(!CommonFunctions::ConnectionStateMatchesOptions (clientList[i],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 			{
 
@@ -447,9 +452,7 @@ int ManyClientsOneServerNonBlockingTest::RunTest(DataStructures::List<RakString>
 
 	for (int i=0;i<clientNum;i++)
 	{
-
-		currentSystem.SetBinaryAddress("127.0.0.1");
-		currentSystem.port=60000;
+        currentSystem = SystemAddress("127.0.0.1", 60000);
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (clientList[i],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 		{

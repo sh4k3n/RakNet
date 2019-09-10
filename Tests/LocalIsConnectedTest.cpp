@@ -40,9 +40,15 @@ GetConnectionState
 GetLocalIP
 GetInternalID
 */
+
+TEST_CASE("LocalIsConnectedTest")
+{
+    LocalIsConnectedTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int LocalIsConnectedTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
-
 	RakPeerInterface *server,*client;
 	destroyList.Clear(false,_FILE_AND_LINE_);
 
@@ -55,10 +61,7 @@ int LocalIsConnectedTest::RunTest(DataStructures::List<RakString> params,bool is
 	server->Startup(1,&SocketDescriptor(60000,0),1);
 	server->SetMaximumIncomingConnections(1);
 
-	SystemAddress serverAddress;
-
-	serverAddress.SetBinaryAddress("127.0.0.1");
-	serverAddress.port=60000;
+	SystemAddress serverAddress("127.0.0.1", 60000);
 	TimeMS entryTime=GetTimeMS();
 	bool lastConnect=false;
 	if (isVerbose)
@@ -69,7 +72,7 @@ int LocalIsConnectedTest::RunTest(DataStructures::List<RakString> params,bool is
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			lastConnect=client->Connect("127.0.0.1",serverAddress.port,0,0)==CONNECTION_ATTEMPT_STARTED;
+			lastConnect=client->Connect("127.0.0.1",serverAddress.GetPort(),0,0)==CONNECTION_ATTEMPT_STARTED;
 		}
 
 		RakSleep(100);
@@ -98,7 +101,7 @@ int LocalIsConnectedTest::RunTest(DataStructures::List<RakString> params,bool is
 	}
 
 	RakSleep(1000);
-	client->Connect("127.0.0.1",serverAddress.port,0,0);
+	client->Connect("127.0.0.1",serverAddress.GetPort(),0,0);
 
 	if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true))
 	{
@@ -115,7 +118,7 @@ int LocalIsConnectedTest::RunTest(DataStructures::List<RakString> params,bool is
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,0,0);
+			client->Connect("127.0.0.1",serverAddress.GetPort(),0,0);
 		}
 
 		RakSleep(100);
@@ -196,11 +199,13 @@ int LocalIsConnectedTest::RunTest(DataStructures::List<RakString> params,bool is
 
 	char convertedIp[39];
 
-	sprintf(convertedIp,"%d.%d.%d.%d",  ((localAddress.binaryAddress >> (24 - 8 * 3)) & 0xFF),((localAddress.binaryAddress >> (24 - 16)) & 0xFF),((localAddress.binaryAddress >> (24 - 8 )) & 0xFF),((localAddress.binaryAddress >> (24)) & 0xFF));
+	//sprintf(convertedIp,"%d.%d.%d.%d",  ((localAddress.binaryAddress >> (24 - 8 * 3)) & 0xFF),((localAddress.binaryAddress >> (24 - 16)) & 0xFF),((localAddress.binaryAddress >> (24 - 8 )) & 0xFF),((localAddress.binaryAddress >> (24)) & 0xFF));
 
-	printf("GetInternalID returned %s\n",convertedIp);
+    
 
-	if (!client->IsLocalIP(convertedIp))
+	printf("GetInternalID returned %s\n", localAddress.ToString(false));
+
+	if (!client->IsLocalIP(localAddress.ToString(false)))
 	{
 		if (isVerbose)
 			DebugTools::ShowError("GetInternalID failed test\n",!noPauses && isVerbose,__LINE__,__FILE__);

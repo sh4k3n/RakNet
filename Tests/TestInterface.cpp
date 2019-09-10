@@ -10,10 +10,18 @@
 
 #include "TestInterface.h"
 
-TestInterface::TestInterface(void)
+RakNet::TestInterface::TestInterface(void)
 {
 }
 
-TestInterface::~TestInterface(void)
+int RakNet::TestInterface::Run()
+{
+    DataStructures::List<RakString> params;
+    int result = RunTest(params, false, false);
+    DestroyPeers();
+    return result;
+}
+
+RakNet::TestInterface::~TestInterface(void)
 {
 }

@@ -191,6 +191,9 @@ STATIC_FACTORY_DEFINITIONS(RakPeerInterface,RakPeer)
 // Constructor
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 RakPeer::RakPeer()
+
+    :
+    endThreads(true)
 {
 #if LIBCAT_SECURITY==1
 	// Encryption and security
@@ -218,7 +221,6 @@ RakPeer::RakPeer()
 	activeSystemListSize=0;
 	remoteSystemLookup=0;
 	bytesSentPerSecond = bytesReceivedPerSecond = 0;
-	endThreads = true;
 	isMainLoopThreadActive = false;
 	incomingDatagramEventHandler=0;
 
@@ -595,6 +597,7 @@ StartupResult RakPeer::Startup( unsigned int maxConnections, SocketDescriptor *s
 		if (socketList[0]->IsBerkleySocket())
 		{
 			unsigned short port = ((RNS2_Berkley*)socketList[0])->GetBoundAddress().GetPort();
+            RakAssert(port != 0);
 			ipList[i].SetPortHostOrder(port);
 
 		}
@@ -994,10 +997,10 @@ void RakPeer::GetIncomingPassword( char* passwordData, int *passwordDataLength  
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ConnectionAttemptResult RakPeer::Connect( const char* host, unsigned short remotePort, const char *passwordData, int passwordDataLength, PublicKey *publicKey, unsigned connectionSocketIndex, unsigned sendConnectionAttemptCount, unsigned timeBetweenSendConnectionAttemptsMS, RakNet::TimeMS timeoutTime )
 {
-	// If endThreads is true here you didn't call Startup() first.
-	if ( host == 0 || endThreads || connectionSocketIndex>=socketList.Size() )
-		return INVALID_PARAMETER;
-
+    // If endThreads is true here you didn't call Startup() first.
+    RakAssert(!endThreads);
+    RakAssert(host != 0);
+    RakAssert(connectionSocketIndex < socketList.Size());
 	RakAssert(remotePort!=0);
 
 	connectionSocketIndex=GetRakNetSocketFromUserConnectionSocketIndex(connectionSocketIndex);
@@ -2327,6 +2330,7 @@ SystemAddress RakPeer::GetInternalID( const SystemAddress systemAddress, const i
 {
 	if (systemAddress==UNASSIGNED_SYSTEM_ADDRESS)
 	{
+        RakAssert(ipList[index].GetPort() != 0);
 		return ipList[index];
 	}
 	else
@@ -2362,6 +2366,7 @@ void RakPeer::SetInternalID(SystemAddress systemAddress, int index)
 {
 	RakAssert(index >=0 && index < MAXIMUM_NUMBER_OF_INTERNAL_IDS);
 	ipList[index]=systemAddress;
+    RakAssert(ipList[index].GetPort() != 0);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -4382,7 +4387,6 @@ bool RakPeer::SendImmediate( char *data, BitSize_t numberOfBitsToSend, PacketPri
 		#if !defined(USE_ALLOCA)
 			rakFree_Ex(sendList, _FILE_AND_LINE_ );
 		#endif
-
 		return false;
 	}
 
@@ -5081,9 +5085,10 @@ bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data,
 							temp.Write((unsigned char)0);
 #endif // LIBCAT_SECURITY
 
-							if ( rcs->outgoingPasswordLength > 0 )
-								temp.Write( ( char* ) rcs->outgoingPassword,  rcs->outgoingPasswordLength );
-
+                            if (rcs->outgoingPasswordLength > 0)
+                            {
+                                temp.Write((char*)rcs->outgoingPassword, rcs->outgoingPasswordLength);
+                            }
 							rakPeer->SendImmediate((char*)temp.GetData(), temp.GetNumberOfBitsUsed(), IMMEDIATE_PRIORITY, RELIABLE, 0, systemAddress, false, false, timeRead, 0 );
 						}
 						else
@@ -5214,7 +5219,10 @@ bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data,
 			for (i=0; i < rakPeer->pluginListNTS.Size(); i++)
 				rakPeer->pluginListNTS[i]->OnDirectSocketReceive(data, length*8, systemAddress);
 
-			RakNet::BitStream bsOut;
+            // MTU. Lower MTU if it exceeds our own limit.
+            uint16_t mtu = (length + UDP_HEADER_SIZE > MAXIMUM_MTU_SIZE) ? MAXIMUM_MTU_SIZE : length + UDP_HEADER_SIZE;
+
+            RakNet::BitStream bsOut(mtu);
 			bsOut.Write((MessageID)ID_OPEN_CONNECTION_REPLY_1);
 			bsOut.WriteAlignedBytes((const unsigned char*) OFFLINE_MESSAGE_DATA_ID, sizeof(OFFLINE_MESSAGE_DATA_ID));
 			bsOut.Write(rakPeer->GetGuidFromSystemAddress(UNASSIGNED_SYSTEM_ADDRESS));
@@ -5233,8 +5241,6 @@ bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data,
 #endif // LIBCAT_SECURITY
 				bsOut.Write((unsigned char) 0);  // HasCookie oN
 
-			// MTU. Lower MTU if it exceeds our own limit.
-			uint16_t mtu = (length+UDP_HEADER_SIZE > MAXIMUM_MTU_SIZE) ? MAXIMUM_MTU_SIZE : length+UDP_HEADER_SIZE;
 			bsOut.WriteCasted<uint16_t>(mtu);
             // Pad response to MTU size so the connection's MTU will be tested in both directions
             AddPaddingWithRandomData(bsOut, mtu, timeRead);
@@ -5527,7 +5533,6 @@ void ProcessNetworkPacket( SystemAddress systemAddress, const char *data, const 
 	else
 	{
 		// int a=5;
-		//printf("--- Packet from unknown system %s\n", systemAddress.ToString());
 	}
 }
 

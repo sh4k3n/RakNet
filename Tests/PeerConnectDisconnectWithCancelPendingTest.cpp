@@ -41,6 +41,13 @@ Connect function returns false and peer is not connected to anything.
 Pending request is not canceled.
 
 */
+
+TEST_CASE("PeerConnectDisconnectWithCancelPendingTest")
+{
+    PeerConnectDisconnectWithCancelPendingTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int PeerConnectDisconnectWithCancelPendingTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 
@@ -71,10 +78,13 @@ int PeerConnectDisconnectWithCancelPendingTest::RunTest(DataStructures::List<Rak
 
 		for (int j=i+1;j<peerNum;j++)//Start at i+1 so don't connect two of the same together.
 		{
+            auto connectResult = peerList[i]->Connect("127.0.0.1", 60000 + j, 0, 0);
+            bool isConnected = connectResult == CONNECTION_ATTEMPT_STARTED ||
+                connectResult == ALREADY_CONNECTED_TO_ENDPOINT;
+            REQUIRE(isConnected);
 
-			if (peerList[i]->Connect("127.0.0.1", 60000+j, 0,0)!=CONNECTION_ATTEMPT_STARTED)
+			if (!isConnected)
 			{
-
 				if (isVerbose)
 					DebugTools::ShowError("Problem while calling connect.",!noPauses && isVerbose,__LINE__,__FILE__);
 
@@ -120,9 +130,7 @@ int PeerConnectDisconnectWithCancelPendingTest::RunTest(DataStructures::List<Rak
 
 			for (int j=i+1;j<peerNum;j++)//Start at i+1 so don't connect two of the same together.
 			{
-
-				currentSystem.SetBinaryAddress("127.0.0.1");
-				currentSystem.port=60000+j;
+                currentSystem = SystemAddress("127.0.0.1", 60000+j);
 
 				peerList[i]->CancelConnectionAttempt(currentSystem);  	//Make sure a connection is not pending before trying to connect.
 
@@ -141,9 +149,7 @@ int PeerConnectDisconnectWithCancelPendingTest::RunTest(DataStructures::List<Rak
 
 				if (peerList[i]->Connect("127.0.0.1", 60000+j, 0,0)!=CONNECTION_ATTEMPT_STARTED)
 				{
-
-					currentSystem.SetBinaryAddress("127.0.0.1");
-					currentSystem.port=60000+j;
+                    currentSystem = SystemAddress("127.0.0.1", 60000 + j);
 
 					peerList[i]->GetSystemList(systemList,guidList);//Get connectionlist
 
@@ -342,24 +348,37 @@ int PeerConnectDisconnectWithCancelPendingTest::RunTest(DataStructures::List<Rak
 
 	for (int i=0;i<peerNum;i++)
 	{
+        for (int j = i + 1;j < peerNum;j++)//Start at i+1 so don't connect two of the same together.
+        {
+            currentSystem = SystemAddress("127.0.0.1", 60000 + j);
+            //Make sure a connection is not pending before trying to connect.
+            peerList[i]->CancelConnectionAttempt(currentSystem);  	
+        }
 
 		for (int j=i+1;j<peerNum;j++)//Start at i+1 so don't connect two of the same together.
 		{
+            currentSystem = SystemAddress("127.0.0.1", 60000 + j);
+            ConnectionAttemptResult connectResult;
+            while(1)
+            {
+                connectResult = peerList[i]->Connect("127.0.0.1", 60000 + j, 0, 0);
+                if (connectResult != CONNECTION_ATTEMPT_ALREADY_IN_PROGRESS)
+                {
+                    break;
+                }
+                RakSleep(100);
+            }
 
-			currentSystem.SetBinaryAddress("127.0.0.1");
-			currentSystem.port=60000+j;
+            bool isConnecting = connectResult == CONNECTION_ATTEMPT_STARTED ||
+                connectResult == ALREADY_CONNECTED_TO_ENDPOINT;
 
-			peerList[i]->CancelConnectionAttempt(currentSystem);  	//Make sure a connection is not pending before trying to connect.
-
-			if (peerList[i]->Connect("127.0.0.1", 60000+j, 0,0)!=CONNECTION_ATTEMPT_STARTED)
+            if (!isConnecting)
 			{
-
-				peerList[i]->GetSystemList(systemList,guidList);//Get connectionlist
+    			peerList[i]->GetSystemList(systemList,guidList);//Get connectionlist
 				int len=systemList.Size();
 
 				if (len==0)//No connections, should not fail.
 				{
-
 					if (isVerbose)
 						DebugTools::ShowError("Problem while calling connect \n",!noPauses && isVerbose,__LINE__,__FILE__);
 

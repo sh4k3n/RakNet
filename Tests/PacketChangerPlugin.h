@@ -93,4 +93,6 @@ public:
 	/// \param[in] remoteSystemAddress The player we sent or got this packet from
 	void OnPushBackPacket(const char *data, const BitSize_t bitsUsed, SystemAddress remoteSystemAddress) {(void) data; (void) bitsUsed; (void) remoteSystemAddress;}
 
+
+    virtual bool UsesReliabilityLayer(void) const { return true; }
 };

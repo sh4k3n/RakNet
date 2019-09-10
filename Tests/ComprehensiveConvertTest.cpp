@@ -24,12 +24,17 @@ Connect fails without pending ops or current connection.
 
 */
 
+TEST_CASE("ComprehensiveConvertTest")
+{
+    ComprehensiveConvertTest test;
+    REQUIRE(test.Run() == 0);
+}
+
+
 int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 
 	static const int CONNECTIONS_PER_SYSTEM =4;
-
-	SystemAddress currentSystem;
 
 	//	DebugTools::ShowError("Note: The conversion of this is on hold until the original sample's problem is known.",!noPauses && isVerbose,__LINE__,__FILE__);
 
@@ -71,9 +76,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 	{
 
 		portAdd=randomMT()%NUM_PEERS;
-
-		currentSystem.SetBinaryAddress("127.0.0.1");
-		currentSystem.port=60000+portAdd;
+        SystemAddress currentSystem("127.0.0.1", 60000 + portAdd);
 		if(!CommonFunctions::ConnectionStateMatchesOptions (peers[i],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 		{
 			ConnectionAttemptResult resultReturn = peers[i]->Connect("127.0.0.1", 60000+portAdd, 0, 0);
@@ -100,9 +103,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 			SocketDescriptor socketDescriptor(60000+peerIndex, 0);
 			peers[peerIndex]->Startup(NUM_PEERS, &socketDescriptor, 1);
 			portAdd=randomMT()%NUM_PEERS;
-
-			currentSystem.SetBinaryAddress("127.0.0.1");
-			currentSystem.port=60000+portAdd;
+            SystemAddress currentSystem("127.0.0.1", 60000 + portAdd);
 			
 			
 			if(!CommonFunctions::ConnectionStateMatchesOptions (peers[peerIndex],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
@@ -122,9 +123,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 			// Connect
 			peerIndex=randomMT()%NUM_PEERS;
 			portAdd=randomMT()%NUM_PEERS;
-
-			currentSystem.SetBinaryAddress("127.0.0.1");
-			currentSystem.port=60000+portAdd;
+            SystemAddress currentSystem("127.0.0.1", 60000 + portAdd);
 			if(!CommonFunctions::ConnectionStateMatchesOptions (peers[peerIndex],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 			{
 				ConnectionAttemptResult resultReturn = peers[peerIndex]->Connect("127.0.0.1", 60000+portAdd, 0, 0);
@@ -155,7 +154,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 					printf("%i: ", 60000+numSystems);
 					for (i=0; i < numSystems; i++)
 					{
-						printf("%i: ", remoteSystems[i].port);
+						printf("%i: ", remoteSystems[i].GetPort());
 					}
 					printf("\n");
 				}
@@ -189,7 +188,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 #endif
 
 			peerIndex=randomMT()%NUM_PEERS;
-			sprintf(data+3, "dataLength=%i priority=%i reliability=%i orderingChannel=%i target=%i broadcast=%i\n", dataLength, priority, reliability, orderingChannel, target.port, broadcast);
+			sprintf(data+3, "dataLength=%i priority=%i reliability=%i orderingChannel=%i target=%i broadcast=%i\n", dataLength, priority, reliability, orderingChannel, target.GetPort(), broadcast);
 			//unsigned short localPort=60000+i;
 #ifdef _VERIFY_RECIPIENTS
 			memcpy((char*)data+1, (char*)&target.port, sizeof(unsigned short));
@@ -224,7 +223,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 			broadcast=false; // Temporarily in so I can check recipients
 #endif
 
-			sprintf(data+3, "dataLength=%i priority=%i reliability=%i orderingChannel=%i target=%i broadcast=%i\n", dataLength, priority, reliability, orderingChannel, target.port, broadcast);
+			sprintf(data+3, "dataLength=%i priority=%i reliability=%i orderingChannel=%i target=%i broadcast=%i\n", dataLength, priority, reliability, orderingChannel, target.GetPort(), broadcast);
 #ifdef _VERIFY_RECIPIENTS
 			memcpy((char*)data, (char*)&target.port, sizeof(unsigned short));
 #endif
@@ -273,7 +272,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 			{
 				StatisticsToString(rss, data, 0);
 				if (isVerbose)
-					printf("Statistics for local system %i:\n%s", mySystemAddress.port, data);
+					printf("Statistics for local system %i:\n%s", mySystemAddress.GetPort(), data);
 
 			}
 
@@ -282,7 +281,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 			{
 				StatisticsToString(rss, data, 0);
 				if (isVerbose)
-					printf("Statistics for target system %i:\n%s", target.port, data);
+					printf("Statistics for target system %i:\n%s", target.GetPort(), data);
 
 			}			
 		}

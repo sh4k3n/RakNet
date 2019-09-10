@@ -54,7 +54,7 @@ int RakThread::Create( void* start_address( void* ), void *arglist, int priority
 #elif defined _WIN32_WCE
 	threadHandle = CreateThread(NULL,MAX_ALLOCA_STACK_ALLOCATION*2,start_address,arglist,0,(DWORD*)&threadID);
 #else
-	threadHandle = (HANDLE) _beginthreadex( NULL, MAX_ALLOCA_STACK_ALLOCATION*2, start_address, arglist, 0, &threadID );
+	threadHandle = (HANDLE) _beginthreadex( NULL, 16 * 1024 /*MAX_ALLOCA_STACK_ALLOCATION*2*/, start_address, arglist, 0, &threadID );
 #endif
 	
 	SetThreadPriority(threadHandle, priority);
@@ -65,6 +65,7 @@ int RakThread::Create( void* start_address( void* ), void *arglist, int priority
 
 	if (threadHandle==0)
 	{
+        printf("Thread create error: %s\n", strerror(errno));
 		return 1;
 	}
 	else

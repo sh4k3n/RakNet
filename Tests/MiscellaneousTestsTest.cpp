@@ -34,6 +34,13 @@ RemoveRouterInterface
 AdvertiseSystem
 
 */
+
+TEST_CASE("MiscellaneousTestsTest")
+{
+    MiscellaneousTestsTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int MiscellaneousTestsTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {	destroyList.Clear(false,_FILE_AND_LINE_);
 

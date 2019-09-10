@@ -19,6 +19,14 @@ Everything connects and sends normally.
 Failure conditions:
 Expected values from ping/pong do not occur within expected time.
 */
+
+
+TEST_CASE("CrossConnectionConvertTest")
+{
+    CrossConnectionConvertTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int CrossConnectionConvertTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 
@@ -92,7 +100,7 @@ int CrossConnectionConvertTest::RunTest(DataStructures::List<RakString> params,b
 					printf("ID_PING\n");
 				connectionAttemptTime=GetTimeMS()+1000;
 				p->systemAddress.ToString(false,clientIP);
-				clientPort=p->systemAddress.port;
+				clientPort=p->systemAddress.GetPort();
 				gotNotification=false;
 			}
 			else if (p->data[0]==ID_UNCONNECTED_PONG)
@@ -143,7 +151,7 @@ int CrossConnectionConvertTest::RunTest(DataStructures::List<RakString> params,b
 					printf("ID_PING\n");
 				connectionAttemptTime=GetTimeMS()+1000;
 				p->systemAddress.ToString(false,clientIP);
-				clientPort=p->systemAddress.port;
+				clientPort=p->systemAddress.GetPort();
 				gotNotification=false;
 			}
 			else if (p->data[0]==ID_UNCONNECTED_PONG)
@@ -185,14 +193,13 @@ int CrossConnectionConvertTest::RunTest(DataStructures::List<RakString> params,b
 				return 1;
 			}
 
-			SystemAddress sa;
-			sa.SetBinaryAddress(serverIP);
-			sa.port=SERVER_PORT;
+			SystemAddress sa(serverIP, SERVER_PORT);
 			client->CancelConnectionAttempt(sa);
 
+            sa = SystemAddress(clientIP, clientPort);
 			sa.SetBinaryAddress(clientIP);
-			sa.port=clientPort;
-			server->CancelConnectionAttempt(sa);
+
+            server->CancelConnectionAttempt(sa);
 
 			server->CloseConnection(server->GetSystemAddressFromIndex(0),true,0);
 			client->CloseConnection(client->GetSystemAddressFromIndex(0),true,0);

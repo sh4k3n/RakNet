@@ -36,6 +36,13 @@ SetMaximumIncomingConnections
 GetMaximumIncomingConnections 
 
 */
+
+TEST_CASE("MaximumConnectTest")
+{
+    MaximumConnectTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int MaximumConnectTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 

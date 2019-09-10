@@ -8,18 +8,22 @@
  *
  */
 
-#include "ManyClientsOneServerDeallocateBlockingTest.h"
+#include "ManyClientsOneServerBlockingTest.h"
 
-void ManyClientsOneServerDeallocateBlockingTest::WaitForConnectionRequestsToComplete(RakPeerInterface **clientList, int clientNum, bool isVerbose)
+TEST_CASE("ManyClientsOneServerBlockingTest")
+{
+    ManyClientsOneServerBlockingTest test;
+    REQUIRE(test.Run() == 0);
+}
+
+void ManyClientsOneServerBlockingTest::WaitForConnectionRequestsToComplete(RakPeerInterface **clientList, int clientNum, bool isVerbose)
 {
 	SystemAddress currentSystem;
 	bool msgWasPrinted=false;
 
 	for (int i=0;i<clientNum;i++)
 	{
-
-		currentSystem.SetBinaryAddress("127.0.0.1");
-		currentSystem.port=60000;
+        currentSystem = SystemAddress("127.0.0.1", 60000);
 
 		while (CommonFunctions::ConnectionStateMatchesOptions (clientList[i],currentSystem,false,true,true) )
 		{
@@ -35,7 +39,7 @@ void ManyClientsOneServerDeallocateBlockingTest::WaitForConnectionRequestsToComp
 	}
 }
 
-void ManyClientsOneServerDeallocateBlockingTest::WaitAndPrintResults(RakPeerInterface **clientList, int clientNum, bool isVerbose,RakPeerInterface *server)
+void ManyClientsOneServerBlockingTest::WaitAndPrintResults(RakPeerInterface **clientList, int clientNum, bool isVerbose,RakPeerInterface *server)
 {
 	WaitForConnectionRequestsToComplete(clientList,clientNum,isVerbose);
 
@@ -104,8 +108,6 @@ void ManyClientsOneServerDeallocateBlockingTest::WaitAndPrintResults(RakPeerInte
 			break;
 		}
 	}
-
-	//RakSleep(100);
 
 	// Log all events per peer
 	for (int i=0;i<clientNum;i++)//Receive for all peers
@@ -178,30 +180,20 @@ void ManyClientsOneServerDeallocateBlockingTest::WaitAndPrintResults(RakPeerInte
 }
 
 /*
+What is being done here is having 256 clients connect to a server, disconnect, connect again.
 
-The server timeout for this test is set to one second.
-
-What is being done here is having 256 clients connect to a server.
-
-Then the client is deallocated.
-
-It is put to sleep for double the timeout amount.
-
-After that the timeout should trigger and the clients register as disconnected.
-
-Then the connection is started again.
-
-Do this for about 30 seconds. 
-
-It is put to sleep for double the timeout amount.
-
-Then allow them all to connect for one last time.
+Do this for about 10 seconds. Then allow them all to connect for one last time.
 
 This version waits for connect and such in a loop, blocking execution so it is a blocking test.
 
 Good ideas for changes:
 After the last check run a eightpeers like test an add the conditions
 of that test as well.
+
+Make sure that if we initiate the connection we get a proper message
+and if not we get a proper message. Add proper conditions.
+
+Randomize sending the disconnect notes
 
 Success conditions:
 All connected normally.
@@ -211,59 +203,36 @@ Doesn't reconnect normally.
 
 During the very first connect loop any connect returns false.
 
-Connect function returns false and peer is not connected to anything,pending a connection, or disconnecting.
-
-GetTimeoutTime does not match the set timeout.
-
-RakPeerInterface Functions used, tested indirectly by its use:
-Startup
-Connect
-SetMaximumIncomingConnections
-Receive
-Send
-DeallocatePacket
-GetSystemList
-SetMaximumIncomingConnections
-
-RakPeerInterface Functions Explicitly Tested:
-GetTimeoutTime
-SetTimeoutTime
-Connect
-IsConnected
+Connect function returns false and peer is not connected to anything and does not have anything pending.
 
 */
-int ManyClientsOneServerDeallocateBlockingTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
+int ManyClientsOneServerBlockingTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 
+	const int clientNum= 256;
+
+	RakPeerInterface *clientList[clientNum];//A list of clients
+	RakPeerInterface *server;
+
 	SystemAddress currentSystem;
+
+	destroyList.Clear(false,_FILE_AND_LINE_);
 
 	//Initializations of the arrays
 	for (int i=0;i<clientNum;i++)
 	{
 
 		clientList[i]=RakPeerInterface::GetInstance();
+		destroyList.Push(clientList[i],_FILE_AND_LINE_);
 
 		clientList[i]->Startup(1,&SocketDescriptor(), 1);
 
 	}
 
 	server=RakPeerInterface::GetInstance();
+	destroyList.Push(server,_FILE_AND_LINE_);
 	server->Startup(clientNum, &SocketDescriptor(60000,0), 1);
 	server->SetMaximumIncomingConnections(clientNum);
-
-	const int timeoutTime=1000;
-	server->SetTimeoutTime(timeoutTime,UNASSIGNED_SYSTEM_ADDRESS);
-
-	int retTimeout=(int)server->GetTimeoutTime(UNASSIGNED_SYSTEM_ADDRESS);
-	if (retTimeout!=timeoutTime)
-	{
-
-		if (isVerbose)
-			DebugTools::ShowError("GetTimeoutTime did not match the timeout that was set. \n",!noPauses && isVerbose,__LINE__,__FILE__);
-
-		return 3;
-
-	}
 
 	//Connect all the clients to the server
 
@@ -287,40 +256,33 @@ int ManyClientsOneServerDeallocateBlockingTest::RunTest(DataStructures::List<Rak
 	DataStructures::List< SystemAddress  > systemList;
 	DataStructures::List< RakNetGUID > guidList;
 
-	if (isVerbose)
-		printf("Entering disconnect loop \n");
+	printf("Entering disconnect loop \n");
 
-	while(GetTimeMS()-entryTime<30000)//Run for 30 Secoonds
+	while(GetTimeMS()-entryTime<10000)//Run for 10 Secoonds
 	{
 
-		//Deallocate client IF connected
+		//Disconnect all clients IF connected to any from client side
 		for (int i=0;i<clientNum;i++)
 		{
 
 			clientList[i]->GetSystemList(systemList,guidList);//Get connectionlist
 			int len=systemList.Size();
 
-			if(len>=1)
+			for (int j=0;j<len;j++)//Disconnect them all
 			{
 
-				RakPeerInterface::DestroyInstance(clientList[i]);
-				clientList[i]=RakPeerInterface::GetInstance();
-	
-
-				clientList[i]->Startup(1,&SocketDescriptor(), 1);
+				clientList[i]->CloseConnection (systemList[j],true,0,LOW_PRIORITY); 	
 			}
 
 		}
 
-		RakSleep(2000);//Allow connections to timeout.
+		RakSleep(100);
 
 		//Connect
 
 		for (int i=0;i<clientNum;i++)
 		{
-
-			currentSystem.SetBinaryAddress("127.0.0.1");
-			currentSystem.port=60000;
+            currentSystem = SystemAddress("127.0.0.1", 60000);
 			if(!CommonFunctions::ConnectionStateMatchesOptions (clientList[i],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 			{
 
@@ -343,21 +305,23 @@ int ManyClientsOneServerDeallocateBlockingTest::RunTest(DataStructures::List<Rak
 
 	WaitAndPrintResults(clientList,clientNum,isVerbose,server);
 
-	printf("Connecting clients\n");
-
-	RakSleep(2000);//Allow connections to timeout.
+    if (isVerbose)
+    {
+        printf("Connecting clients\n");
+    }
 
 	//Connect
 
 	for (int i=0;i<clientNum;i++)
 	{
-
-		currentSystem.SetBinaryAddress("127.0.0.1");
-		currentSystem.port=60000;
+        currentSystem = SystemAddress("127.0.0.1", 60000);
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (clientList[i],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 		{
-			printf("Calling Connect() for client %i.\n",i);
+            if (isVerbose)
+            {
+                printf("Calling Connect() for client %i.\n", i);
+            }
 
 			if (clientList[i]->Connect("127.0.0.1", 60000, 0,0)!=CONNECTION_ATTEMPT_STARTED)
 			{
@@ -399,6 +363,8 @@ int ManyClientsOneServerDeallocateBlockingTest::RunTest(DataStructures::List<Rak
 
 				DebugTools::ShowError("",!noPauses && isVerbose,__LINE__,__FILE__);
 			}
+	
+			
 
 			return 2;
 
@@ -406,20 +372,22 @@ int ManyClientsOneServerDeallocateBlockingTest::RunTest(DataStructures::List<Rak
 
 	}
 
+	
+
 	if (isVerbose)
 		printf("Pass\n");
 	return 0;
 
 }
 
-RakString ManyClientsOneServerDeallocateBlockingTest::GetTestName()
+RakString ManyClientsOneServerBlockingTest::GetTestName()
 {
 
-	return "ManyClientsOneServerDeallocateBlockingTest";
+	return "ManyClientsOneServerBlockingTest";
 
 }
 
-RakString ManyClientsOneServerDeallocateBlockingTest::ErrorCodeToString(int errorCode)
+RakString ManyClientsOneServerBlockingTest::ErrorCodeToString(int errorCode)
 {
 
 	switch (errorCode)
@@ -430,15 +398,11 @@ RakString ManyClientsOneServerDeallocateBlockingTest::ErrorCodeToString(int erro
 		break;
 
 	case 1:
-		return "The connect function failed";
+		return "The connect function failed.";
 		break;
 
 	case 2:
-		return "Peers did not connect normally";
-		break;
-
-	case 3:
-		return "GetTimeoutTime did not match the timeout that was set";
+		return "Peers did not connect normally.";
 		break;
 
 	default:
@@ -447,20 +411,20 @@ RakString ManyClientsOneServerDeallocateBlockingTest::ErrorCodeToString(int erro
 
 }
 
-ManyClientsOneServerDeallocateBlockingTest::ManyClientsOneServerDeallocateBlockingTest(void)
+ManyClientsOneServerBlockingTest::ManyClientsOneServerBlockingTest(void)
 {
 }
 
-ManyClientsOneServerDeallocateBlockingTest::~ManyClientsOneServerDeallocateBlockingTest(void)
+ManyClientsOneServerBlockingTest::~ManyClientsOneServerBlockingTest(void)
 {
 }
 
-void ManyClientsOneServerDeallocateBlockingTest::DestroyPeers()
+void ManyClientsOneServerBlockingTest::DestroyPeers()
 {
 
-	for (int i=0; i < clientNum; i++)
-		RakPeerInterface::DestroyInstance(clientList[i]);
+	int theSize=destroyList.Size();
 
-	RakPeerInterface::DestroyInstance(server);
+	for (int i=0; i < theSize; i++)
+		RakPeerInterface::DestroyInstance(destroyList[i]);
 
 }

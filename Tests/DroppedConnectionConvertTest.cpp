@@ -31,13 +31,19 @@ Random timout detection fails.
 
 static const int NUMBER_OF_CLIENTS=9;
 
+TEST_CASE("DroppedConnectionConvertTest")
+{
+    DroppedConnectionConvertTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int DroppedConnectionConvertTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 
 	RakPeerInterface *server;
 	RakPeerInterface *clients[NUMBER_OF_CLIENTS];
 	unsigned index, connectionCount;
-	SystemAddress serverID;
+	SystemAddress serverID("127.0.0.", 20000);
 	Packet *p;
 	unsigned short numberOfSystems;
 	unsigned short numberOfSystems2;
@@ -48,8 +54,6 @@ int DroppedConnectionConvertTest::RunTest(DataStructures::List<RakString> params
 
 	// Used to refer to systems.  We already know the IP
 	unsigned short serverPort = 20000;
-	serverID.binaryAddress=inet_addr("127.0.0.1");
-	serverID.port=serverPort;
 
 	server=RakPeerInterface::GetInstance();
 	destroyList.Clear(false,_FILE_AND_LINE_);
@@ -163,9 +167,11 @@ int DroppedConnectionConvertTest::RunTest(DataStructures::List<RakString> params
 
 				if(!CommonFunctions::ConnectionStateMatchesOptions (clients[index],serverID,true,true,true,true) )//Are we connected or is there a pending operation ?
 				{
-					if (clients[index]->Connect("127.0.0.1", serverPort, 0, 0)!=CONNECTION_ATTEMPT_STARTED)
+                    auto connectRes = clients[index]->Connect("127.0.0.1", serverPort, 0, 0);
+                    bool isConnected = connectRes == CONNECTION_ATTEMPT_STARTED ||
+                        connectRes == ALREADY_CONNECTED_TO_ENDPOINT;
+					if (!isConnected)
 					{
-
 						DebugTools::ShowError("Connect function failed.",!noPauses && isVerbose,__LINE__,__FILE__);
 						return 2;
 
@@ -208,11 +214,15 @@ int DroppedConnectionConvertTest::RunTest(DataStructures::List<RakString> params
 					{
 						if(!CommonFunctions::ConnectionStateMatchesOptions (clients[index],serverID,true,true,true,true) )//Are we connected or is there a pending operation ?
 						{
-							if (clients[index]->Connect("127.0.0.1", serverPort, 0, 0)!=CONNECTION_ATTEMPT_STARTED)
+
+                            auto connectResult = clients[index]->Connect("127.0.0.1", serverPort, 0, 0);
+                            bool isConnected = connectResult == CONNECTION_ATTEMPT_STARTED || 
+                                connectResult == ALREADY_CONNECTED_TO_ENDPOINT;
+                            REQUIRE(isConnected);
+                            if (!isConnected)
 							{
 								DebugTools::ShowError("Connect function failed.",!noPauses && isVerbose,__LINE__,__FILE__);
 								return 2;
-
 							}
 						}
 					}
@@ -296,18 +306,18 @@ int DroppedConnectionConvertTest::RunTest(DataStructures::List<RakString> params
 				{
 				case ID_CONNECTION_REQUEST_ACCEPTED:
 					if (isVerbose)
-						printf("%i: %ID_CONNECTION_REQUEST_ACCEPTED from %i.\n",sender, p->systemAddress.port);
+						printf("%i: ID_CONNECTION_REQUEST_ACCEPTED from %i.\n",sender, p->systemAddress.GetPort());
 					break;
 				case ID_DISCONNECTION_NOTIFICATION:
 					// Connection lost normally
 					if (isVerbose)
-						printf("%i: ID_DISCONNECTION_NOTIFICATION from %i.\n",sender, p->systemAddress.port);
+						printf("%i: ID_DISCONNECTION_NOTIFICATION from %i.\n",sender, p->systemAddress.GetPort());
 					break;
 
 				case ID_NEW_INCOMING_CONNECTION:
 					// Somebody connected.  We have their IP now
 					if (isVerbose)
-						printf("%i: ID_NEW_INCOMING_CONNECTION from %i.\n",sender, p->systemAddress.port);
+						printf("%i: ID_NEW_INCOMING_CONNECTION from %i.\n",sender, p->systemAddress.GetPort());
 					break;
 
 
@@ -315,12 +325,12 @@ int DroppedConnectionConvertTest::RunTest(DataStructures::List<RakString> params
 					// Couldn't deliver a reliable packet - i.e. the other system was abnormally
 					// terminated
 					if (isVerbose)
-						printf("%i: ID_CONNECTION_LOST from %i.\n",sender, p->systemAddress.port);
+						printf("%i: ID_CONNECTION_LOST from %i.\n",sender, p->systemAddress.GetPort());
 					break;
 
 				case ID_NO_FREE_INCOMING_CONNECTIONS:
 					if (isVerbose)
-						printf("%i: ID_NO_FREE_INCOMING_CONNECTIONS from %i.\n",sender, p->systemAddress.port);
+						printf("%i: ID_NO_FREE_INCOMING_CONNECTIONS from %i.\n",sender, p->systemAddress.GetPort());
 					break;
 
 				default:
@@ -415,3 +425,4 @@ DroppedConnectionConvertTest::DroppedConnectionConvertTest(void)
 DroppedConnectionConvertTest::~DroppedConnectionConvertTest(void)
 {
 }
+

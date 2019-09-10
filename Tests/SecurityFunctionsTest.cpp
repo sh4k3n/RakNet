@@ -66,6 +66,13 @@ IsInSecurityExceptionList //Disabled because of RakNetStatistics changes
 RemoveFromSecurityExceptionList //Disabled because of RakNetStatistics changes 	  
 
 */
+
+TEST_CASE("SecurityFunctionsTest")
+{
+    SecurityFunctionsTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 
@@ -76,15 +83,14 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 	client->Startup(1,&SocketDescriptor(),1);
 	server->Startup(1,&SocketDescriptor(60000,0),1);
-	server->SetMaximumIncomingConnections(1);
-	server->SetIncomingPassword(thePassword,(int)strlen(thePassword));
+	server->SetMaximumIncomingConnections(1024);
+	server->SetIncomingPassword(thePassword, 8);
 
 	char returnedPass[22];
 	int returnedLen=22;
 	server->GetIncomingPassword(returnedPass,&returnedLen);
-	returnedPass[returnedLen]=0;//Password is a data block convert to null terminated string to make the test easier
 
-	if (strcmp(returnedPass,thePassword)!=0)
+	if (returnedLen == 8 && memcmp(returnedPass,thePassword, 8)!=0)
 	{
 		if (isVerbose)
 		{
@@ -95,10 +101,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 		return 5;
 	}
 
-	SystemAddress serverAddress;
-
-	serverAddress.SetBinaryAddress("127.0.0.1");
-	serverAddress.port=60000;
+	SystemAddress serverAddress("127.0.0.1", 60000);
 	TimeMS entryTime=GetTimeMS();
 
 	if (isVerbose)
@@ -109,7 +112,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,0,0);
+			client->Connect("127.0.0.1",serverAddress.GetPort(),0,0);
 		}
 
 		RakSleep(100);
@@ -133,7 +136,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,badPass,(int)strlen(badPass));
+			client->Connect("127.0.0.1",serverAddress.GetPort(), badPass,(int)strlen(badPass));
 		}
 
 		RakSleep(100);
@@ -156,7 +159,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,thePassword,(int)strlen(thePassword));
+            client->Connect("127.0.0.1", serverAddress.GetPort(), thePassword, 8);
 		}
 
 		RakSleep(100);
@@ -187,7 +190,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,thePassword,(int)strlen(thePassword));
+			client->Connect("127.0.0.1",serverAddress.GetPort(),thePassword,(int)strlen(thePassword));
 		}
 
 		RakSleep(100);
@@ -229,7 +232,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,thePassword,(int)strlen(thePassword));
+			client->Connect("127.0.0.1",serverAddress.GetPort(),thePassword,(int)strlen(thePassword));
 		}
 
 		RakSleep(100);
@@ -260,7 +263,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,thePassword,(int)strlen(thePassword));
+			client->Connect("127.0.0.1",serverAddress.GetPort(),thePassword,(int)strlen(thePassword));
 		}
 
 		RakSleep(100);
@@ -302,7 +305,7 @@ int SecurityFunctionsTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->Connect("127.0.0.1",serverAddress.port,thePassword,(int)strlen(thePassword));
+			client->Connect("127.0.0.1",serverAddress.GetPort(),thePassword,(int)strlen(thePassword));
 		}
 
 		RakSleep(100);

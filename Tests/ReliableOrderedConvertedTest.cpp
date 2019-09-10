@@ -15,6 +15,12 @@ int memoryUsage=0;
 
 char lastError[512];
 
+TEST_CASE("ReliableOrderedConvertedTest")
+{
+    ReliableOrderedConvertedTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 void* ReliableOrderedConvertedTest::LoggedMalloc(size_t size, const char *file, unsigned int line)
 {
 	memoryUsage+=(int)size;

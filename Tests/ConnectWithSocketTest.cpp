@@ -7,7 +7,6 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  *
  */
-
 #include "ConnectWithSocketTest.h"
 
 /*
@@ -35,20 +34,22 @@ GetSockets
 GetSocket
 
 */
+
+TEST_CASE("ConnectWithSocketTest")
+{
+    ConnectWithSocketTest test;    
+    REQUIRE(test.Run() == 0);
+}
+
 int ConnectWithSocketTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 	destroyList.Clear(false,_FILE_AND_LINE_);
 
-	RakPeerInterface *server,*client;
-
-	DataStructures::List< RakNetSmartPtr< RakNetSocket > > sockets;
+	DataStructures::List< RakNetSocket2* > sockets;
 	TestHelpers::StandardClientPrep(client,destroyList);
 	TestHelpers::StandardServerPrep(server,destroyList);
 
-	SystemAddress serverAddress;
-
-	serverAddress.SetBinaryAddress("127.0.0.1");
-	serverAddress.port=60000;
+	SystemAddress serverAddress("127.0.0.1", 60000);
 
 	printf("Testing normal connect before test\n");
 	if (!TestHelpers::WaitAndConnectTwoPeersLocally(client,server,5000))
@@ -74,7 +75,7 @@ int ConnectWithSocketTest::RunTest(DataStructures::List<RakString> params,bool i
 	printf("Disconnecting client\n");
 	CommonFunctions::DisconnectAndWait(client,"127.0.0.1",60000);
 
-	RakNetSmartPtr<RakNetSocket> theSocket;
+	RakNetSocket2* theSocket;
 
 	client->GetSockets(sockets);
 
@@ -88,7 +89,7 @@ int ConnectWithSocketTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->ConnectWithSocket("127.0.0.1",serverAddress.port,0,0,theSocket);
+			client->ConnectWithSocket("127.0.0.1",serverAddress.GetPort(),0,0,theSocket);
 		}
 
 		RakSleep(100);
@@ -129,7 +130,7 @@ int ConnectWithSocketTest::RunTest(DataStructures::List<RakString> params,bool i
 
 		if(!CommonFunctions::ConnectionStateMatchesOptions (client,serverAddress,true,true,true,true))
 		{
-			client->ConnectWithSocket("127.0.0.1",serverAddress.port,0,0,theSocket);
+			client->ConnectWithSocket("127.0.0.1",serverAddress.GetPort(),0,0,theSocket);
 		}
 
 		RakSleep(100);
@@ -202,7 +203,9 @@ void ConnectWithSocketTest::DestroyPeers()
 
 	int theSize=destroyList.Size();
 
-	for (int i=0; i < theSize; i++)
-		RakPeerInterface::DestroyInstance(destroyList[i]);
-
+    for (int i = 0; i < theSize; i++)
+    {
+        destroyList[i]->Shutdown(500);
+        RakPeerInterface::DestroyInstance(destroyList[i]);
+    }
 }

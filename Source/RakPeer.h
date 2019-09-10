@@ -19,6 +19,8 @@
 #ifndef __RAK_PEER_H
 #define __RAK_PEER_H
 
+#include <atomic>
+
 #include "ReliabilityLayer.h"
 #include "RakPeerInterface.h"
 #include "BitStream.h"
@@ -714,7 +716,7 @@ protected:
 	SystemAddress GetLoopbackAddress(void) const;
 
 	///Set this to true to terminate the Peer thread execution 
-	volatile bool endThreads;
+	std::atomic<bool> endThreads;
 	///true if the peer thread is active. 
 	volatile bool isMainLoopThreadActive;
 	

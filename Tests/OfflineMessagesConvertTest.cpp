@@ -34,6 +34,13 @@ GetOfflinePingResponse
 AdvertiseSystem
 Ping
 */
+TEST_CASE("OfflineMessagesConvertTest")
+{
+    OfflineMessagesConvertTest test;
+    REQUIRE(test.Run() == 0);
+}
+
+
 int OfflineMessagesConvertTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
 

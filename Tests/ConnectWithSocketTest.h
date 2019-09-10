@@ -40,6 +40,7 @@ public:
 private:
 	DataStructures::List <RakString> errorList;
     DataStructures::List <RakPeerInterface *> destroyList;
-	
+    RakPeerInterface *server, *client;
+
 
 };

@@ -2077,7 +2077,6 @@ void ReliabilityLayer::SendBitStream( RemoteSystem& remoteSystem, RakNet::BitStr
 		RakAssert(success);
 	}
 #endif
-
 #ifdef RAKNET_NETWORK_SIMULATOR
     remoteSystem.networkSimulator.Send(*bitStream, RakNet::GetTimeMS(), remoteSystem);
 #else

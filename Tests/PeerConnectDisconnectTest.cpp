@@ -10,6 +10,12 @@
 
 #include "PeerConnectDisconnectTest.h"
 
+TEST_CASE("PeerConnectDisconnectTest")
+{
+    PeerConnectDisconnectTest test;
+    REQUIRE(test.Run() == 0);
+}
+
 void PeerConnectDisconnectTest::WaitForConnectionRequestsToComplete(RakPeerInterface **peerList, int peerNum, bool isVerbose)
 {
 	SystemAddress currentSystem;
@@ -19,8 +25,7 @@ void PeerConnectDisconnectTest::WaitForConnectionRequestsToComplete(RakPeerInter
 	{
 		for (int j=i+1;j<peerNum;j++)//Start at i+1 so don't connect two of the same together.
 		{
-			currentSystem.SetBinaryAddress("127.0.0.1");
-			currentSystem.port=60000+j;
+            currentSystem = SystemAddress("127.0.0.1", 60000 + j);
 
 			while (CommonFunctions::ConnectionStateMatchesOptions (peerList[i],currentSystem,false,true,true) )
 			{
@@ -214,9 +219,7 @@ int PeerConnectDisconnectTest::RunTest(DataStructures::List<RakString> params,bo
 
 			for (int j=i+1;j<peerNum;j++)//Start at i+1 so don't connect two of the same together.
 			{
-
-				currentSystem.SetBinaryAddress("127.0.0.1");
-				currentSystem.port=60000+j;
+                currentSystem = SystemAddress("127.0.0.1", 60000 + j);
 				if(!CommonFunctions::ConnectionStateMatchesOptions (peerList[i],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 				{
 
@@ -250,8 +253,7 @@ int PeerConnectDisconnectTest::RunTest(DataStructures::List<RakString> params,bo
 
 		for (int j=i+1;j<peerNum;j++)//Start at i+1 so don't connect two of the same together.
 		{
-			currentSystem.SetBinaryAddress("127.0.0.1");
-			currentSystem.port=60000+j;
+            currentSystem = SystemAddress("127.0.0.1", 60000 + j);
 
 			if(!CommonFunctions::ConnectionStateMatchesOptions (peerList[i],currentSystem,true,true,true,true) )//Are we connected or is there a pending operation ?
 			{
