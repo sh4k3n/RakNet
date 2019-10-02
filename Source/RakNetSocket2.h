@@ -10,9 +10,7 @@
 
 #ifndef __RAKNET_SOCKET_2_H
 #define __RAKNET_SOCKET_2_H
-
-#include "RakNetTypes.h"
-#include "MTUSize.h"
+#include <rnet/NetworkSimulator.h>
 #include "LocklessTypes.h"
 #include "RakThread.h"
 #include "DS_ThreadsafeAllocatingQueue.h"
@@ -131,11 +129,24 @@ public:
 	static void GetMyIP( SystemAddress addresses[MAXIMUM_NUMBER_OF_INTERNAL_IDS] );
 	static void DomainNameToIP( const char *domainName, char ip[65] );
 
+    void SendToSimulator(BitStream& stream, const SystemAddress& address);
+    void ConfigureSimulator(const rnet::NetworkSimulatorSettings& settings) 
+    {
+        myNetworkSimulator.Configure(settings);
+    }
+
+    void Update(RakNet::TimeMS time)
+    {
+        myNetworkSimulator.Update(time);
+    }
+
 protected:
 	RNS2EventHandler *eventHandler;
 	RNS2Type socketType;
 	SystemAddress boundAddress;
 	unsigned int userConnectionSocketIndex;
+private:
+    rnet::NetworkSimulator myNetworkSimulator;
 };
 
 #if defined(WINDOWS_STORE_RT)

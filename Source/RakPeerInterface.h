@@ -16,7 +16,7 @@
 
 #ifndef __RAK_PEER_INTERFACE_H
 #define __RAK_PEER_INTERFACE_H
-
+#include <rnet/NetworkSimulatorSettings.h>
 #include "PacketPriority.h"
 #include "RakNetTypes.h"
 #include "RakMemoryOverride.h"
@@ -556,7 +556,7 @@ public:
 	/// \param[in] packetloss Chance to lose a packet. Ranges from 0 to 1.
 	/// \param[in] minExtraPing The minimum time to delay sends.
 	/// \param[in] extraPingVariance The additional random time to delay sends.
-	virtual void ApplyNetworkSimulator( float packetloss, unsigned short minExtraPing, unsigned short extraPingVariance)=0;
+	virtual void ApplyNetworkSimulator(const rnet::NetworkSimulatorSettings& settings)=0;
 
 	/// Limits how much outgoing bandwidth can be sent per-connection.
 	/// This limit does not apply to the sum of all connections!

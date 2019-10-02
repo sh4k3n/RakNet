@@ -25,6 +25,8 @@
 #endif
 #include <math.h>
 #include "RemoteSystem.h"
+#include "rnet/SocketLayer.h"
+
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
 #include "kcp/ikcp.h"
 
@@ -1515,8 +1517,6 @@ void ReliabilityLayer::Update( RemoteSystem& remoteSystem, int MTUSize, CCTimeTy
 	timeMs=(RakNet::TimeMS) (time/(CCTimeType)1000);
 #endif
 
-    remoteSystem.networkSimulator.Update(RakNet::GetTimeMS());
-
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
     for (size_t i = 0; i < NUMBER_OF_ORDERED_STREAMS; ++i)
     {
@@ -2077,26 +2077,7 @@ void ReliabilityLayer::SendBitStream( RemoteSystem& remoteSystem, RakNet::BitStr
 		RakAssert(success);
 	}
 #endif
-#ifdef RAKNET_NETWORK_SIMULATOR
-    remoteSystem.networkSimulator.Send(*bitStream, RakNet::GetTimeMS(), remoteSystem);
-#else
-#ifdef USE_THREADED_SEND
-	SendToThread::SendToThreadBlock *block =  SendToThread::AllocateBlock();
-	memcpy(block->data, bitStream->GetData(), length);
-	block->dataWriteOffset=length;
-	block->extraSocketOptions=extraSocketOptions;
-	block->remotePortRakNetWasStartedOn_PS3=remotePortRakNetWasStartedOn_PS3;
-	block->s=s;
-	block->systemAddress= remoteSystem.systemAddress;
-	SendToThread::ProcessBlock(block);
-#else
-	RNS2_SendParameters bsp;
-	bsp.data = (char*) bitStream->GetData();
-	bsp.length = length;
-	bsp.systemAddress = remoteSystem.systemAddress;
-	remoteSystem.rakNetSocket->Send(&bsp, _FILE_AND_LINE_);
-#endif
-#endif
+    rnet::socket_layer::SendTo(*remoteSystem.rakNetSocket, *bitStream, remoteSystem.systemAddress);
 }
 
 //-------------------------------------------------------------------------------------------------------

@@ -18,7 +18,7 @@
 
 #ifndef __RAK_PEER_H
 #define __RAK_PEER_H
-
+#include <rnet/NetworkSimulatorSettings.h>
 #include <atomic>
 
 #include "ReliabilityLayer.h"
@@ -39,6 +39,7 @@
 #include "LocklessTypes.h"
 #include "DS_Queue.h"
 #include "RemoteSystem.h"
+
 
 namespace RakNet {
 
@@ -593,12 +594,7 @@ public:
 	/// Adds simulated ping and packet loss to the outgoing data flow.
 	/// To simulate bi-directional ping and packet loss, you should call this on both the sender and the recipient, with half the total ping and packetloss value on each.
 	/// You can exclude network simulator code with the _RELEASE #define to decrease code size
-	/// \deprecated Use http://www.jenkinssoftware.com/forum/index.php?topic=1671.0 instead.
-	/// \note Doesn't work past version 3.6201
-	/// \param[in] packetloss Chance to lose a packet. Ranges from 0 to 1.
-	/// \param[in] minExtraPing The minimum time to delay sends.
-	/// \param[in] extraPingVariance The additional random time to delay sends.
-	virtual void ApplyNetworkSimulator( float packetloss, unsigned short minExtraPing, unsigned short extraPingVariance);
+	virtual void ApplyNetworkSimulator(const rnet::NetworkSimulatorSettings& settings) final override;
 
 	/// Limits how much outgoing bandwidth can be sent per-connection.
 	/// This limit does not apply to the sum of all connections!
@@ -929,10 +925,8 @@ protected:
 	unsigned maxOutgoingBPS;
 
 	// Nobody would use the internet simulator in a final build.
-#ifdef _DEBUG
-	double _packetloss;
-	unsigned short _minExtraPing, _extraPingVariance;
-#endif
+
+    rnet::NetworkSimulatorSettings myDefaultNetworkSimulatorSettings;
     
 	///How long it has been since things were updated by a call to receiveUpdate thread uses this to determine how long to sleep for
 	//unsigned int lastUserUpdateCycle;

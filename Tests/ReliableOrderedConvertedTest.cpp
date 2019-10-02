@@ -89,51 +89,21 @@ int ReliableOrderedConvertedTest::RunTest(DataStructures::List<RakString> params
 	{
 		packetNumberSender[i]=0;
 		packetNumberReceiver[i]=0;
-
 	}
 
-	/*
-	if (argc==2)
-	{
-	fp = fopen(argv[1],"wt");
-	SetMalloc_Ex(LoggedMalloc);
-	SetRealloc_Ex(LoggedRealloc);
-	SetFree_Ex(LoggedFree);
-	}
-	else
-	*/
 	fp=0;
 	destroyList.Clear(false,_FILE_AND_LINE_);
 
 	sender =RakPeerInterface::GetInstance();
 	destroyList.Push(	sender ,_FILE_AND_LINE_);
-	//sender->ApplyNetworkSimulator(.02, 100, 50);
-
-	/*
-	if (str[0]==0)
-	sendInterval=30;
-	else
-	sendInterval=atoi(str);*///possible future params
-
 	sendInterval=30;
 
-	/*
-	printf("Enter remote IP: ");
-	Gets(ip, sizeof(ip));
-	if (ip[0]==0)*/
 	strcpy(ip, "127.0.0.1");
 
-	/*
-	printf("Enter remote port: ");
-	Gets(str, sizeof(str));
-	if (str[0]==0)*/
 	strcpy(str, "60000");
 	remotePort=atoi(str);
-	/*
-	printf("Enter local port: ");
-	Gets(str, sizeof(str));
-	if (str[0]==0)*/
-	strcpy(str, "0");
+
+    strcpy(str, "0");
 	localPort=atoi(str);
 
 	if (isVerbose)
@@ -145,10 +115,6 @@ int ReliableOrderedConvertedTest::RunTest(DataStructures::List<RakString> params
 	receiver =RakPeerInterface::GetInstance();
 	destroyList.Push(	receiver ,_FILE_AND_LINE_);
 
-	/*
-	printf("Enter local port: ");
-	Gets(str, sizeof(str));
-	if (str[0]==0)*/
 	strcpy(str, "60000");
 	localPort=atoi(str);
 
@@ -158,15 +124,7 @@ int ReliableOrderedConvertedTest::RunTest(DataStructures::List<RakString> params
 	receiver->Startup(32, &SocketDescriptor(localPort,0), 1);
 	receiver->SetMaximumIncomingConnections(32);
 
-	//	if (sender)
-	//		sender->ApplyNetworkSimulator(128000, 50, 100);
-	//	if (receiver)
-	//		receiver->ApplyNetworkSimulator(128000, 50, 100);
-
-	/*printf("How long to run this test for, in seconds?\n");
-	Gets(str, sizeof(str));
-	if (str[0]==0)*/
-	strcpy(str, "12");
+    strcpy(str, "12");
 
 	currentTime = GetTimeMS();
 	quitTime = atoi(str) * 1000 + currentTime;
@@ -174,7 +132,6 @@ int ReliableOrderedConvertedTest::RunTest(DataStructures::List<RakString> params
 	nextSend=currentTime;
 
 	while (currentTime < quitTime)
-		//while (1)
 	{
 
 		packet = sender->Receive();
@@ -237,10 +194,6 @@ int ReliableOrderedConvertedTest::RunTest(DataStructures::List<RakString> params
 				printf("Snd: %i.\n", packetNumberSender[streamNumberSender]);
 
 			nextSend+=sendInterval;
-
-			// Test halting
-			//	if (rand()%20==0)
-			//		nextSend+=1000;
 		}
 
 		packet = receiver->Receive();

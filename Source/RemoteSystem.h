@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ReliabilityLayer.h"
-#include "NetworkSimulator.h"
+#include "rnet/NetworkSimulator.h"
 
 namespace RakNet
 {
@@ -30,7 +30,7 @@ namespace RakNet
         RakNet::Time connectionTime; /// connection time, if active.
     //		int connectionSocketIndex; // index into connectionSockets to send back on.
         RakNetGUID guid;
-        int MTUSize;
+        uint16_t MTUSize;
         // Reference counted socket to send back on
         RakNetSocket2* rakNetSocket;
         SystemIndex remoteSystemIndex;
@@ -43,10 +43,6 @@ namespace RakNet
         // Valid after connectMode reaches HANDLING_CONNECTION_REQUEST
         char client_public_key[cat::EasyHandshake::PUBLIC_KEY_BYTES];
 #endif
-#ifdef RAKNET_NETWORK_SIMULATOR
-        NetworkSimulator networkSimulator;
-#endif
-
 
         enum ConnectMode { NO_ACTION, DISCONNECT_ASAP, DISCONNECT_ASAP_SILENTLY, DISCONNECT_ON_NO_ACK, REQUESTED_CONNECTION, HANDLING_CONNECTION_REQUEST, UNVERIFIED_SENDER, CONNECTED } connectMode;
     };
