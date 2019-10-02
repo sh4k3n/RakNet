@@ -1,14 +1,15 @@
-Larku's fork of RakNet 4.081
+RakNet/KCP
 ============
 
-Copyright (c) 2014, Oculus VR, Inc.
+This is a heavily improved RakNet fork. The biggest change is replacing RakNet ARQ protocol with KCP as 
+RakNet's Sliding Window has bugs and UDT is mediocre for real time multiplayer games. 
+KCP provides better latency than Sliding Window or UDT by sacrificing some bandwidth.
 
-Fork notes [updated 27-July-2015]
+Key features
 ------------------------------------------
-
-This fork contains most of the pending pull requests from the official Oculus VR original.
-
-This fork also contains other various fixes that I've found necessary - mostly addressing compilation issues on various platforms.
+- New ARQ protocol: KCP
+- Unit tested
+- Various RakNet fixes
 
 Package notes
 ------------------------------------------
