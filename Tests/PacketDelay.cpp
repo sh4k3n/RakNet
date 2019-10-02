@@ -9,7 +9,6 @@ using namespace RakNet;
 float MeasurePacketDelay(RakNet::TimeMS milliseconds, unsigned short minPing, unsigned short maxPing, float packetLoss)
 {
     TestEnvironment env;
-    char data[8096];
     int seed = 12345;
 
     size_t totalSend = 0;

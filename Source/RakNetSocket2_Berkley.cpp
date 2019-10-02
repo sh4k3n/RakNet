@@ -388,8 +388,8 @@ void RNS2_Berkley::RecvFromBlockingIPV4And6(RNS2RecvStruct *recvFromStruct)
 	if (recvFromStruct->bytesRead==-1)
 	{
 		DWORD dwIOError = GetLastError();
-		if (dwIoError != 10035)
-		{
+        if (dwIOError != WSAECONNRESET && dwIOError != WSAEINTR && dwIOError != WSAETIMEDOUT && dwIOError != WSAEWOULDBLOCK)
+        {
 			LPVOID messageBuffer;
 			FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL, dwIOError, MAKELANGID( LANG_NEUTRAL, SUBLANG_DEFAULT ),  // Default language

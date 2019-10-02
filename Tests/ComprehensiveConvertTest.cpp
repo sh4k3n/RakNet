@@ -171,7 +171,7 @@ int ComprehensiveConvertTest::RunTest(DataStructures::List<RakString> params,boo
 			bool broadcast;
 
 			//	data[0]=ID_RESERVED1+(randomMT()%10);
-			data[0]=ID_USER_PACKET_ENUM;
+			data[0]=char(ID_USER_PACKET_ENUM);
 			dataLength=3+(randomMT()%8000);
 			//			dataLength=600+(randomMT()%7000);
 			priority=(PacketPriority)(randomMT()%(int)NUMBER_OF_PRIORITIES);

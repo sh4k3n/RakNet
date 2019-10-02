@@ -196,12 +196,7 @@ int LocalIsConnectedTest::RunTest(DataStructures::List<RakString> params,bool is
 		printf("Testing GetInternalID\n");
 
 	SystemAddress localAddress=client->GetInternalID();
-
-	char convertedIp[39];
-
-	//sprintf(convertedIp,"%d.%d.%d.%d",  ((localAddress.binaryAddress >> (24 - 8 * 3)) & 0xFF),((localAddress.binaryAddress >> (24 - 16)) & 0xFF),((localAddress.binaryAddress >> (24 - 8 )) & 0xFF),((localAddress.binaryAddress >> (24)) & 0xFF));
-
-    
+ 
 
 	printf("GetInternalID returned %s\n", localAddress.ToString(false));
 

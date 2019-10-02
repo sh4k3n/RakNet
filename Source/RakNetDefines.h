@@ -137,7 +137,7 @@
 #endif
 
 #ifndef RAKNET_SUPPORT_IPV6
-#define RAKNET_SUPPORT_IPV6 0
+#define RAKNET_SUPPORT_IPV6 1
 #endif
 
 
