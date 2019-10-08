@@ -48,6 +48,8 @@ enum PacketReliability
 	/// Same as regular UDP, except that it will also discard duplicate datagrams.  RakNet adds (6 to 17) + 21 bits of overhead, 16 of which is used to detect duplicate packets and 6 to 17 of which is used for message length.
 	UNRELIABLE,
 
+// NOTE: using KCP only unreliable and reliable ordered are supported. 
+// #if RAKNET_ARQ != RAKNET_ARQ_KCP
 	/// Regular UDP with a sequence counter.  Out of order messages will be discarded.
 	/// Sequenced and ordered messages sent on the same channel will arrive in the order sent.
 	UNRELIABLE_SEQUENCED,
@@ -57,8 +59,9 @@ enum PacketReliability
 
 	/// This message is reliable and will arrive in the order you sent it.  Messages will be delayed while waiting for out of order messages.  Same overhead as UNRELIABLE_SEQUENCED.
 	/// Sequenced and ordered messages sent on the same channel will arrive in the order sent.
+// #endif
 	RELIABLE_ORDERED,
-
+// #if RAKNET_ARQ != RAKNET_ARQ_KCP
 	/// This message is reliable and will arrive in the sequence you sent it.  Out or order messages will be dropped.  Same overhead as UNRELIABLE_SEQUENCED.
 	/// Sequenced and ordered messages sent on the same channel will arrive in the order sent.
 	RELIABLE_SEQUENCED,
@@ -79,7 +82,7 @@ enum PacketReliability
 	/// Same as RELIABLE_SEQUENCED. The user will also get ID_SND_RECEIPT_ACKED after the message is delivered when calling RakPeerInterface::Receive(). Bytes 1-4 will contain the number returned from the Send() function. On disconnect or shutdown, all messages not previously acked should be considered lost.
 	/// 05/04/10 You can't have sequenced and ack receipts, because you don't know if the other system discarded the message, meaning you don't know if the message was processed
 	// RELIABLE_SEQUENCED_WITH_ACK_RECEIPT,
-
+// #endif
 	/// \internal
 	NUMBER_OF_RELIABILITIES
 };

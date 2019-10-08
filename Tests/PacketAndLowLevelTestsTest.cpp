@@ -117,7 +117,7 @@ int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,b
 	server->DeallocatePacket(packet);
 
 	PluginInterface2* myPlug=new PacketChangerPlugin();
-
+#if RAKNET_ARQ != RAKNET_ARQ_KCP // TODO: Remove plugin support, not needed
 	printf("Test attach detach of plugins\n");
 	client->AttachPlugin(myPlug); 
 	TestHelpers::BroadCastTestPacket(client);
@@ -129,6 +129,7 @@ int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,b
 
 		return 2;
 	}
+#endif
 
 	client->DetachPlugin(myPlug); 
 	TestHelpers::BroadCastTestPacket(client);
@@ -143,20 +144,15 @@ int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,b
 
 	printf("Test AllocatePacket\n");
 	Packet * hugePacket,*hugePacket2;
-	const int dataSize=3000000;//around 30 meg didn't want to calculate the exact
+    // TODO: KCP does not support really big data sizes, probably need to add extra wrappers for big data?
+    const int dataSize = 128 * 1024;//3000000;//around 30 meg didn't want to calculate the exact
 	hugePacket=client->AllocatePacket(dataSize);
 	hugePacket2=client->AllocatePacket(dataSize);
-
-	/*//Couldn't find a good cross platform way for allocated memory so skipped this check
-	if (somemalloccheck<3000000)
-	{}
-	*/
-
-	printf("Assuming 3000000 allocation for splitpacket, testing setsplitpacket\n");
 
 	hugePacket->data[0]=ID_USER_PACKET_ENUM+1;
 	hugePacket2->data[0]=ID_USER_PACKET_ENUM+1;
 
+#if RAKNET_ARQ != RAKNET_ARQ_KCP // TODO: Remove SetSplitMessageProgressInterval 
 	server->SetSplitMessageProgressInterval(1);
 
 	if (server->GetSplitMessageProgressInterval()!=1)
@@ -168,6 +164,7 @@ int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,b
 		return 4;
 
 	}
+#endif
 
 	if (!client->Send((const char *)hugePacket->data,dataSize,HIGH_PRIORITY,RELIABLE_ORDERED,0, UNASSIGNED_SYSTEM_ADDRESS, true))
 	{
@@ -178,6 +175,7 @@ int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,b
 		return 5;
 	}
 
+#if RAKNET_ARQ != RAKNET_ARQ_KCP // TODO: Implement download progress
 	if (!CommonFunctions::WaitForMessageWithID(server,ID_DOWNLOAD_PROGRESS,2000))
 	{
 
@@ -190,6 +188,7 @@ int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,b
 	while(CommonFunctions::WaitForMessageWithID(server,ID_DOWNLOAD_PROGRESS,500))//Clear out the rest before next test
 	{
 	}
+#endif
 
 	printf("Making sure still connected, if not connect\n");
 	if (!TestHelpers::WaitAndConnectTwoPeersLocally(client,server,5000))//Make sure connected before test

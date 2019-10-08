@@ -129,16 +129,15 @@ public:
 	static void GetMyIP( SystemAddress addresses[MAXIMUM_NUMBER_OF_INTERNAL_IDS] );
 	static void DomainNameToIP( const char *domainName, char ip[65] );
 
+#ifdef RAKNET_NETWORK_SIMULATOR
     void SendToSimulator(BitStream& stream, const SystemAddress& address);
+
     void ConfigureSimulator(const rnet::NetworkSimulatorSettings& settings) 
     {
         myNetworkSimulator.Configure(settings);
     }
-
-    void Update(RakNet::TimeMS time)
-    {
-        myNetworkSimulator.Update(time);
-    }
+    void Update(RakNet::TimeMS time) { myNetworkSimulator.Update(time); }
+#endif
 
 protected:
 	RNS2EventHandler *eventHandler;
@@ -146,7 +145,9 @@ protected:
 	SystemAddress boundAddress;
 	unsigned int userConnectionSocketIndex;
 private:
+#ifdef RAKNET_NETWORK_SIMULATOR
     rnet::NetworkSimulator myNetworkSimulator;
+#endif
 };
 
 #if defined(WINDOWS_STORE_RT)

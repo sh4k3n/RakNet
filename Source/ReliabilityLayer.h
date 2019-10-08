@@ -40,6 +40,8 @@
 #include "Rand.h"
 #include "RakNetSocket2.h"
 
+#include <unordered_map>
+
 #if RAKNET_ARQ == RAKNET_ARQ_UDT
 #include "CCRakNetUDT.h"
 #define INCLUDE_TIMESTAMP_WITH_DATAGRAMS 1
@@ -49,7 +51,9 @@
 #endif
 
 /// Number of ordered streams available. You can use up to 32 ordered streams
-#define NUMBER_OF_ORDERED_STREAMS 32 // 2^5
+// TODO: Currently limited to first message id (ID_CONNECTED_PING=32)
+// TODO: KCP supports more streams.
+#define NUMBER_OF_ORDERED_STREAMS ID_CONNECTED_PING // 32 // 2^5
 
 #define RESEND_TREE_ORDER 32
 
@@ -263,12 +267,14 @@ public:
 		DataStructures::List<PluginInterface2*> &messageHandlerList,
 		RakNetRandom *rnr, BitStream &updateBitStream);
 	
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	/// Were you ever unable to deliver a packet despite retries?
 	/// \return true means the connection has been lost.  Otherwise not.
     bool IsDeadConnection(void) const { return deadConnection; }
 
 	/// Causes IsDeadConnection to return true
     void KillConnection(void) { deadConnection = true; }
+#endif
 
 	/// Get Statistics
 	/// \return A pointer to a static struct, filled out with current statistical information.
@@ -283,7 +289,9 @@ public:
 #endif
 	void SetUnreliableTimeout(RakNet::TimeMS timeoutMS);
 	/// Has a lot of time passed since the last ack
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	bool AckTimeout(RakNet::Time curTime);
+#endif
 	CCTimeType GetNextSendTime(void) const;
 	CCTimeType GetTimeBetweenPackets(void) const;
 #if INCLUDE_TIMESTAMP_WITH_DATAGRAMS==1
@@ -308,8 +316,7 @@ private:
     void InitializeVariables(void);
 
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-    struct IKCPCB* myOrderedStreams[NUMBER_OF_ORDERED_STREAMS] = { 0 };
-    uint16_t myNextReceiveIndex = 0;
+    std::unordered_map<uint32_t, struct IKCPCB*> myOrderedStreams;
 #else
 	///Parse an internalPacket and create a bitstream to represent this data
 	/// \return Returns number of bits used
@@ -637,13 +644,13 @@ private:
 	void AllocInternalPacketData(InternalPacket *internalPacket, unsigned int numBytes, bool allowStack, const char *file, unsigned int line);
 	void FreeInternalPacketData(InternalPacket *internalPacket, const char *file, unsigned int line);
 	DataStructures::MemoryPool<InternalPacketRefCountedData> refCountedDataPool;
-#endif
+    bool deadConnection = false;
     RakNet::TimeMS timeLastDatagramArrived;
+#endif    
     RakNetStatistics statistics;
     BPSTracker bpsMetrics[RNS_PER_SECOND_METRICS_COUNT];
     RakNet::TimeMS timeoutTime; // How long to wait in MS before timing someone out
     CCTimeType lastBpsClear;
-    bool deadConnection = false;
 #if LIBCAT_SECURITY==1
 public:
 	cat::AuthenticatedEncryption* GetAuthenticatedEncryption(void) { return &auth_enc; }

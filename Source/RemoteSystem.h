@@ -28,6 +28,9 @@ namespace RakNet
         RakNet::Time nextPingTime;  /// When to next ping this player
         RakNet::Time lastReliableSend; /// When did the last reliable send occur.  Reliable sends must occur at least once every timeoutTime/2 units to notice disconnects
         RakNet::Time connectionTime; /// connection time, if active.
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+        RakNet::Time timeLastDatagramArrived;
+#endif
     //		int connectionSocketIndex; // index into connectionSockets to send back on.
         RakNetGUID guid;
         uint16_t MTUSize;

@@ -67,10 +67,12 @@ bool RakNetSocket2::IsBerkleySocket(void) const {
 }
 SystemAddress RakNetSocket2::GetBoundAddress(void) const {return boundAddress;}
 
+#ifdef RAKNET_NETWORK_SIMULATOR
 void RakNetSocket2::SendToSimulator(BitStream& stream, const SystemAddress& address)
 {
     myNetworkSimulator.Send(stream, *this, address);
 }
+#endif
 
 RakNetSocket2* RakNetSocket2Allocator::AllocRNS2(void)
 {

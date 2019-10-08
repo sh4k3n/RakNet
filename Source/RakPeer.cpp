@@ -501,34 +501,10 @@ StartupResult RakPeer::Startup( unsigned int maxConnections, SocketDescriptor *s
 			RakAssert("TODO" && 0);
 		}
 		#endif
-/*
 
-		SystemAddress saOut;
-		SocketLayer::GetSystemAddress( rns, &saOut );
-		rns->SetBoundAddress(saOut);
-		rns->SetRemotePortRakNetWasStartedOn(socketDescriptors[i].remotePortRakNetWasStartedOn_PS3_PSP2);
-		rns->SetChromeInstance(socketDescriptors[i].chromeInstance);
-		rns->SetExtraSocketOptions(socketDescriptors[i].extraSocketOptions);
-		rns->SetUserConnectionSocketIndex(i);
-		rns->SetBlockingSocket(socketDescriptors[i].blockingSocket);
-
-#if RAKNET_SUPPORT_IPV6==0
-		if (addrToBind==0)
-			rns->SetBoundAddressToLoopback(4);
-#endif
-
-		// GetBoundAddress is asynch, which isn't supported by this architecture
-#if !defined(__native_client__)
-		int zero=0;
-		if (SocketLayer::SendTo(rns, (const char*) &zero,4, rns->GetBoundAddress(), _FILE_AND_LINE_)!=0)
-		{
-			DerefAllSockets();
-			return SOCKET_FAILED_TEST_SEND;
-		}
-#endif
-		*/
-
+#ifdef RAKNET_NETWORK_SIMULATOR
         r2->ConfigureSimulator(myDefaultNetworkSimulatorSettings);
+#endif
 		socketList.Push(r2, _FILE_AND_LINE_ );
 
 	}
@@ -3725,6 +3701,9 @@ RakPeer::RemoteSystemStruct * RakPeer::AssignSystemAddressToRemoteSystemList( co
 			remoteSystem->nextPingTime = 0; // Ping immediately
 			remoteSystem->weInitiatedTheConnection = false;
 			remoteSystem->connectionTime = time;
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            remoteSystem->timeLastDatagramArrived = time;
+#endif
 			remoteSystem->myExternalSystemAddress = UNASSIGNED_SYSTEM_ADDRESS;
 			remoteSystem->lastReliableSend=time;
 
@@ -5424,7 +5403,10 @@ void ProcessNetworkPacket( SystemAddress systemAddress, const char *data, const 
 	remoteSystem = rakPeer->GetRemoteSystemFromSystemAddress( systemAddress, true, true );
 	if ( remoteSystem )
 	{
-		// Handle regular incoming data
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+        remoteSystem->timeLastDatagramArrived = RakNet::GetTimeMS(); // TODO: call GetTimeMS() only once per process packet loop
+#endif
+        // Handle regular incoming data
 		// HandleSocketReceiveFromConnectedPlayer is only safe to be called from the same thread as Update, which is this thread
 		if ( isOfflineMessage==false)
 		{
@@ -5539,12 +5521,14 @@ bool RakPeer::RunRecvFromOnce( RakNetSocket *s )
 bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 {
 
+#ifdef RAKNET_NETWORK_SIMULATOR
     {
         for (size_t i = 0; i < socketList.Size(); ++i)
         {
             socketList[i]->Update(RakNet::GetTimeMS());
         }
     }
+#endif
 
 	RakPeer::RemoteSystemStruct * remoteSystem;
 	unsigned int activeSystemListIndex;
@@ -5601,7 +5585,6 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 	{
 		if (bcs->command==BufferedCommandStruct::BCS_SEND)
 		{
-			// GetTime is a very slow call so do it once and as late as possible
 			if (timeNS==0)
 			{
 				timeNS = RakNet::GetTimeUS();
@@ -5860,6 +5843,19 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 			remoteSystem->reliabilityLayer.Update( *remoteSystem, remoteSystem->MTUSize, timeNS, maxOutgoingBPS, pluginListNTS, &rnr, updateBitStream ); // systemAddress only used for the internet simulator test
 
 			// Check for failure conditions
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            if ((( 
+                remoteSystem->connectMode == RemoteSystemStruct::CONNECTED) && (static_cast<int>(timeMS - remoteSystem->timeLastDatagramArrived) > remoteSystem->reliabilityLayer.GetTimeoutTime())) ||
+                ((remoteSystem->connectMode == RemoteSystemStruct::DISCONNECT_ASAP || 
+                    remoteSystem->connectMode == RemoteSystemStruct::DISCONNECT_ON_NO_ACK || 
+                    remoteSystem->connectMode == RemoteSystemStruct::DISCONNECT_ASAP_SILENTLY) && remoteSystem->reliabilityLayer.IsOutgoingDataWaiting() == false) ||
+                ((
+                (remoteSystem->connectMode == RemoteSystemStruct::REQUESTED_CONNECTION ||
+                    remoteSystem->connectMode == RemoteSystemStruct::HANDLING_CONNECTION_REQUEST ||
+                    remoteSystem->connectMode == RemoteSystemStruct::UNVERIFIED_SENDER)
+                    && timeMS > remoteSystem->connectionTime && timeMS - remoteSystem->connectionTime > 10000))
+                )
+#else
 			if ( remoteSystem->reliabilityLayer.IsDeadConnection() ||
 				((remoteSystem->connectMode==RemoteSystemStruct::DISCONNECT_ASAP || remoteSystem->connectMode==RemoteSystemStruct::DISCONNECT_ASAP_SILENTLY) && remoteSystem->reliabilityLayer.IsOutgoingDataWaiting()==false) ||
 				(remoteSystem->connectMode==RemoteSystemStruct::DISCONNECT_ON_NO_ACK && (remoteSystem->reliabilityLayer.AreAcksWaiting()==false || remoteSystem->reliabilityLayer.AckTimeout(timeMS)==true)) ||
@@ -5869,6 +5865,7 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 				remoteSystem->connectMode==RemoteSystemStruct::UNVERIFIED_SENDER)
 				&& timeMS > remoteSystem->connectionTime && timeMS - remoteSystem->connectionTime > 10000))
 				)
+#endif
 			{
 			//	RAKNET_DEBUG_PRINTF("timeMS=%i remoteSystem->connectionTime=%i\n", timeMS, remoteSystem->connectionTime );
 

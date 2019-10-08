@@ -134,7 +134,7 @@ int PingTestsTest::RunTest(DataStructures::List<RakString> params,bool isVerbose
 		return 3;
 	}
 
-	if (lowestPing>10)//The lowest ping for localhost should drop below 10MS at least once
+	if (lowestPing>15)//The lowest ping for localhost should drop below 15MS at least once
 	{
 
 		if (isVerbose)
@@ -219,7 +219,7 @@ int PingTestsTest::TestAverageValue(int averagePing,int line,bool noPauses,bool 
 
 	}
 
-	if (averagePing>10)//Average Ping should not be greater than 10MS for localhost. Command line pings typically give < 1ms
+	if (averagePing>25)//Average Ping should not be greater than 15MS for localhost. Command line pings typically give < 1ms
 	{
 
 		if (isVerbose)

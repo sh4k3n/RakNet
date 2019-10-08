@@ -392,7 +392,6 @@ int ManyClientsOneServerDeallocateBlockingTest::RunTest(DataStructures::List<Rak
 		int connNum=guidList.Size();//Get the number of connections for the current peer
 		if (connNum!=1)//Did we connect all?
 		{
-
 			if (isVerbose)
 			{
 				printf("Not all clients reconnected normally.\nFailed on client number %i\n",i);

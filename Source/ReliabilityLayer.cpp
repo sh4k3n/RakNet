@@ -29,6 +29,7 @@
 
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
 #include "kcp/ikcp.h"
+#include <utility>
 
 namespace RakNet
 {
@@ -42,15 +43,27 @@ namespace RakNet
         return 0;
     }
 
-    inline void EnsureStream(struct IKCPCB*& ikcp, uint32_t channel, RemoteSystem& remoteSystem)
+    inline struct IKCPCB* EnsureStream(std::unordered_map<uint32_t, struct IKCPCB*>& streams, 
+        uint32_t channel, RemoteSystem& remoteSystem, int MTUSize)
     {
-        if (ikcp == nullptr)
+        auto iter = streams.find(channel);
+        if (iter == streams.end())
         {
-            ikcp = ikcp_create(channel, &remoteSystem);
-            ikcp_nodelay(ikcp, 1, 20, 2, 0);
+            struct IKCPCB* ikcp = ikcp_create(channel, &remoteSystem);
+            int res = ikcp_nodelay(ikcp, 
+                1,  // 1 = "nodelay" mode
+                10, // 10 = Protocol internal work interval 10 milliseconds
+                2,  // 2 = 2 ACK spans will result in direct retransmission
+                1   // 1 = Non-concessional Flow Control
+            );
+            RakAssert(res == 0, "Invalid KCP config");
+            res = ikcp_setmtu(ikcp, MTUSize);
+            RakAssert(res == 0, "Invalid MTU %i", MTUSize);
             ikcp->output = SendKCPPacket;
-            //ikcp_update(ikcp, currentTime);
+            streams.insert(std::pair<uint32_t, struct IKCPCB*>(channel, ikcp));
+            return ikcp;
         }
+        return iter->second;
     }
 }
 #endif
@@ -335,13 +348,7 @@ return 1;
 // Add 21 to the default MTU so if we encrypt it can hold potentially 21 more bytes of extra data + padding.
 ReliabilityLayer::ReliabilityLayer()
 {
-
-#ifdef _DEBUG
-	// Wait longer to disconnect in debug so I don't get disconnected while tracing
-	timeoutTime=30000;
-#else
 	timeoutTime=10000;
-#endif
 
 	InitializeVariables();
 #if RAKNET_ARQ != RAKNET_ARQ_KCP
@@ -357,9 +364,12 @@ ReliabilityLayer::ReliabilityLayer()
 //-------------------------------------------------------------------------------------------------------
 ReliabilityLayer::~ReliabilityLayer()
 {
-#if RAKNET_ARQ != RAKNET_ARQ_KCP
-	FreeMemory( true ); // Free all memory immediately
-#endif
+    std::for_each(myOrderedStreams.begin(), myOrderedStreams.end(), [&](auto& iter)
+    {
+        auto& stream = iter.second;
+        ikcp_release(stream);
+    });
+    myOrderedStreams.clear();
 }
 //-------------------------------------------------------------------------------------------------------
 // Resets the layer for reuse
@@ -367,13 +377,11 @@ ReliabilityLayer::~ReliabilityLayer()
 void ReliabilityLayer::Reset(bool resetVariables, int MTUSize, bool _useSecurity )
 {
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-    for (size_t i = 0; i < NUMBER_OF_ORDERED_STREAMS; ++i)
+    std::for_each(myOrderedStreams.begin(), myOrderedStreams.end(), [&](auto& iter)
     {
-        if (myOrderedStreams[i])
-        {
-            ikcp_flush(myOrderedStreams[i]);
-        }
-    }    
+        auto& stream = iter.second;
+        ikcp_flush(stream);
+    });
 #else
     FreeMemory( true ); // true because making a memory reset pending in the update cycle causes resets after reconnects.  Instead, just call Reset from a single thread
 #endif
@@ -390,14 +398,12 @@ void ReliabilityLayer::Reset(bool resetVariables, int MTUSize, bool _useSecurity
 		(void) _useSecurity;
 #endif // LIBCAT_SECURITY
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-        for (size_t i = 0; i < NUMBER_OF_ORDERED_STREAMS; ++i)
+        std::for_each(myOrderedStreams.begin(), myOrderedStreams.end(), [&](auto& iter)
         {
-            if (myOrderedStreams[i])
-            {
-                ikcp_release(myOrderedStreams[i]);
-                myOrderedStreams[i] = nullptr;
-            }
-        }
+            auto& stream = iter.second;
+            ikcp_release(stream);
+        });
+        myOrderedStreams.clear();
 #else
         congestionManager.Init(RakNet::GetTimeUS(), MTUSize - UDP_HEADER_SIZE);
 #endif
@@ -437,7 +443,9 @@ void ReliabilityLayer::InitializeVariables( void )
 #endif
 	
 	statistics.connectionStartTime = RakNet::GetTimeUS();
+    lastBpsClear = 0;
 #if RAKNET_ARQ != RAKNET_ARQ_KCP
+    timeLastDatagramArrived = RakNet::GetTimeMS();
     splitPacketId = 0;
 	elapsedTimeSinceLastUpdate=0;
 	throughputCapCountdown=0;
@@ -449,17 +457,15 @@ void ReliabilityLayer::InitializeVariables( void )
 	bandwidthExceededStatistic=false;
 	remoteSystemTime=0;
 	unreliableTimeout=0;
-	lastBpsClear=0;
 
 	// Disable packet pairs
 	countdownToNextPacketPair=15;
 
 	nextAllowedThroughputSample=0;
-	deadConnection = cheater = false;
+    deadConnection = cheater = false;
 	timeOfLastContinualSend=0;
 
 	// timeResendQueueNonEmpty = 0;
-	timeLastDatagramArrived=RakNet::GetTimeMS();
 #endif
 	//	packetlossThisSample=false;
 	//	backoffThisSample=0;
@@ -696,21 +702,20 @@ bool ReliabilityLayer::HandleSocketReceiveFromConnectedPlayer(
 	timeRead/=1000;
 #endif
 
-    timeLastDatagramArrived = RakNet::GetTimeMS();
     bpsMetrics[(int) ACTUAL_BYTES_RECEIVED].Push1(timeRead,length + UDP_HEADER_SIZE);
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
     auto orderingChannel = ikcp_getconv(buffer);
     if (orderingChannel < NUMBER_OF_ORDERED_STREAMS)
     {
-        EnsureStream(myOrderedStreams[orderingChannel], orderingChannel, remoteSystem);
-        if (ikcp_input(myOrderedStreams[orderingChannel], buffer, long(length)) >= 0)
+        struct IKCPCB* stream = EnsureStream(myOrderedStreams, orderingChannel, remoteSystem, MTUSize);
+        if (ikcp_input(stream, buffer, long(length)) >= 0)
         {
             return true;
         }
     }
-    return false;
+    return false; 
 #else
-
+    timeLastDatagramArrived = RakNet::GetTimeMS();
 	(void) MTUSize;
 
 	if ( length <= 2 || buffer == 0 )   // Length of 1 is a connection request resend that we just ignore
@@ -1277,23 +1282,19 @@ CONTINUE_SOCKET_DATA_PARSE_LOOP:
 BitSize_t ReliabilityLayer::Receive( unsigned char **data )
 {
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-    do 
+    for (auto iter = myOrderedStreams.begin(); iter != myOrderedStreams.end(); ++iter)
     {
-        if (myOrderedStreams[myNextReceiveIndex])
+        auto& stream = iter->second;
+        int nextSize = ikcp_peeksize(stream);
+        if (nextSize > 0)
         {
-            int nextSize = ikcp_peeksize(myOrderedStreams[myNextReceiveIndex]);
-            if (nextSize > 0)
-            {
-                char* newBuffer = (char*)malloc(nextSize);
-                auto res = ikcp_recv(myOrderedStreams[myNextReceiveIndex], newBuffer, nextSize);
-                RakAssert(res >= 0);
-                *data = (unsigned char*)newBuffer;
-                return nextSize * 8;
-            }
+            char* newBuffer = (char*)malloc(nextSize);
+            auto res = ikcp_recv(stream, newBuffer, nextSize);
+            RakAssert(res >= 0);
+            *data = (unsigned char*)newBuffer;
+            return nextSize * 8;
         }
-        ++myNextReceiveIndex;
-    } while (myNextReceiveIndex < NUMBER_OF_ORDERED_STREAMS);
-    myNextReceiveIndex = 0;
+    }
     return 0;
 #else
 	InternalPacket * internalPacket;
@@ -1365,21 +1366,23 @@ bool ReliabilityLayer::Send(
 	}
 
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-    //if (reliability != UNRELIABLE)
+    if (reliability != UNRELIABLE)
     {
-        EnsureStream(myOrderedStreams[orderingChannel], orderingChannel, remoteSystem);
-        int result = ikcp_send(myOrderedStreams[orderingChannel], data, numberOfBytesToSend);
+        struct IKCPCB* stream = EnsureStream(myOrderedStreams, orderingChannel, remoteSystem, MTUSize);
+        int result = ikcp_send(stream, data, numberOfBytesToSend);
         if (result >= 0)
         {
             bpsMetrics[(int)USER_MESSAGE_BYTES_PUSHED].Push1(currentTime, numberOfBytesToSend);
             return true;
         }
+        RakAssert(false);// Too many segments?
     }
-    /*else
+    else
     {
-
-    }*/
-    RakAssert(false);
+        BitStream bitStream((unsigned char*)data, numberOfBytesToSend, false);
+        rnet::socket_layer::SendTo(*remoteSystem.rakNetSocket, bitStream, remoteSystem.systemAddress);
+        return true;
+    }
     return false;
 #else
     (void)(remoteSystem);
@@ -1518,13 +1521,11 @@ void ReliabilityLayer::Update( RemoteSystem& remoteSystem, int MTUSize, CCTimeTy
 #endif
 
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-    for (size_t i = 0; i < NUMBER_OF_ORDERED_STREAMS; ++i)
+    std::for_each(myOrderedStreams.begin(), myOrderedStreams.end(), [&](auto& iter)
     {
-        if (myOrderedStreams[i])
-        {
-            ikcp_update(myOrderedStreams[i], time);
-        }
-    }
+        auto& stream = iter.second;
+        ikcp_update(stream, time);
+    });
 #else
 	// This line is necessary because the timer isn't accurate
 	if (time <= lastUpdateTime)
@@ -2101,14 +2102,12 @@ bool ReliabilityLayer::IsOutgoingDataWaiting(void)
 		//resendTree.IsEmpty()==false;// || outputQueue.Size() > 0 || orderingList.Size() > 0 || splitPacketChannelList.Size() > 0;
 		statistics.messagesInResendBuffer!=0;
 #else
-    for (size_t i = 0; i < NUMBER_OF_ORDERED_STREAMS; ++i)
+    for (auto iter = myOrderedStreams.begin(); iter != myOrderedStreams.end(); ++iter)
     {
-        if (myOrderedStreams[i])
+        auto& stream = iter->second;
+        if (ikcp_waitsnd(stream))
         {
-            if (ikcp_waitsnd(myOrderedStreams[i]))
-            {
-                return true;
-            }
+            return true;
         }
     }
     return false;
@@ -3170,15 +3169,13 @@ unsigned int ReliabilityLayer::GetResendListDataSize(void) const
 	// return resendTree.Size();
 	return statistics.messagesInResendBuffer;
 }
-#endif
+
 //-------------------------------------------------------------------------------------------------------
 bool ReliabilityLayer::AckTimeout(RakNet::Time curTime)
 {
-	// I check timeLastDatagramArrived-curTime because with threading it is possible that timeLastDatagramArrived is
-	// slightly greater than curTime, in which case this is NOT an ack timeout
-    return (timeLastDatagramArrived - curTime) > 10000 && curTime - timeLastDatagramArrived > timeoutTime;
+    return static_cast<std::make_signed<RakNet::Time>::type>(curTime - timeLastDatagramArrived) > timeoutTime;
 }
-#if RAKNET_ARQ != RAKNET_ARQ_KCP
+
 //-------------------------------------------------------------------------------------------------------
 CCTimeType ReliabilityLayer::GetNextSendTime(void) const
 {
