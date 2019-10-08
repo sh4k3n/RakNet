@@ -123,7 +123,7 @@
 #define RAKNET_ARQ_KCP 2
 
 #ifndef RAKNET_ARQ
-#define RAKNET_ARQ RAKNET_ARQ_UDT
+#define RAKNET_ARQ RAKNET_ARQ_KCP
 #endif
 
 #ifdef _DEBUG
@@ -139,16 +139,6 @@
 #ifndef RAKNET_SUPPORT_IPV6
 #define RAKNET_SUPPORT_IPV6 1
 #endif
-
-
-
-
-
-
-
-
-
-
 
 #ifndef RAKSTRING_TYPE
 #if defined(_UNICODE)
