@@ -4151,6 +4151,7 @@ void RakPeer::SendBuffered( const char *data, BitSize_t numberOfBitsToSend, Pack
 	BufferedCommandStruct *bcs;
 
 	bcs=bufferedCommands.Allocate( _FILE_AND_LINE_ );
+    // TODO: Following comment is not valid with KCP, investigate how this could be done efficiently.
 	bcs->data = (char*) rakMalloc_Ex( (size_t) BITS_TO_BYTES(numberOfBitsToSend), _FILE_AND_LINE_ ); // Making a copy doesn't lose efficiency because I tell the reliability layer to use this allocation for its own copy
 	if (bcs->data==0)
 	{
@@ -4318,7 +4319,11 @@ bool RakPeer::SendImmediate( char *data, BitSize_t numberOfBitsToSend, PacketPri
 	for (sendListIndex=0; sendListIndex < sendListSize; sendListIndex++)
 	{
 		// Send may split the packet and thus deallocate data.  Don't assume data is valid if we use the callerAllocationData
-		bool useData = useCallerDataAllocation && callerDataAllocationUsed==false && sendListIndex+1==sendListSize;
+#if RAKNET_ARQ_KCP == RAKNET_ARQ_KCP
+        bool useData = false;
+#else
+        bool useData = useCallerDataAllocation && callerDataAllocationUsed == false && sendListIndex + 1 == sendListSize;
+#endif
 		remoteSystemList[sendList[sendListIndex]].reliabilityLayer.Send( 
             remoteSystemList[sendList[sendListIndex]],            
             data, numberOfBitsToSend, priority, reliability, orderingChannel, useData==false, remoteSystemList[sendList[sendListIndex]].MTUSize, currentTime, receipt );
@@ -5729,8 +5734,6 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
                     // MTU size due to packet loss.
                     // Note: Using random data to prevent compression in lower layer.
                     AddPaddingWithRandomData(bitStream, mtuSizes[MTUSizeIndex] - UDP_HEADER_SIZE, timeMS);
-					//char str[256];
-					//rcs->systemAddress.ToString(true,str);
 
 					//RAKNET_DEBUG_PRINTF("%i:IOCR, ", __LINE__);
 
@@ -5797,8 +5800,6 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 		}
 		requestedConnectionQueueMutex.Unlock();
 	}
-
-
 
 	// remoteSystemList in network thread
 	for ( activeSystemListIndex = 0; activeSystemListIndex < activeSystemListSize; ++activeSystemListIndex )
