@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
+add_subdirectory("catch2")
+add_subdirectory("kcp")
+
 option( RAKNET_ENABLE_EXTENSIONS 				"Enable extension projects that might need specific dependencies." TRUE )
 option( RAKNET_EXTENSION_USEMYSQL 				"Enable extensions using MySQL" 		TRUE )
 option( RAKNET_EXTENSION_USEPOSTGRESQL			"Enable extensions using PostgreSQL" 	TRUE )

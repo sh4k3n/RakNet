@@ -56,7 +56,7 @@ MACRO(GETCURRENTFOLDER)#Gets the current foldername without the path
 ENDMACRO(GETCURRENTFOLDER)
 
 MACRO(VSUBFOLDER PROJECTNAME FOLDERNAME)#A macro interface for adding solution folders with a patched cmake
-	set_target_properties(${PROJECTNAME} PROPERTIES PROJECT_GROUP ${FOLDERNAME})
+	set_target_properties(${PROJECTNAME} PROPERTIES FOLDER ${FOLDERNAME})
 ENDMACRO(VSUBFOLDER)
 
 MACRO(STANDARDNOTFOUNDMESSAGE NAME PLIBRARIES PINCLUDES EXTRA_INFORMATION)#If the libraries are not found, what to display

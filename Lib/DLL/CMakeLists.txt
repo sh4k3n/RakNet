@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(RakNetDLL)
 
-FILE(GLOB ALL_HEADER_SRCS ${RakNet_SOURCE_DIR}/Source/*.h)
-FILE(GLOB ALL_CPP_SRCS ${RakNet_SOURCE_DIR}/Source/*.cpp)
+FILE(GLOB_RECURSE ALL_HEADER_SRCS ${RakNet_SOURCE_DIR}/Source/*.h)
+FILE(GLOB_RECURSE ALL_CPP_SRCS ${RakNet_SOURCE_DIR}/Source/*.cpp)
 
 
 include_directories( ${RAKNET_INTERNAL_INCLUDE_DIRS} ) 

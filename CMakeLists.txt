@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.6)
 
 project(RakNet)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set(PREDEFINED_TARGETS_FOLDER "CustomTargets")
+
 if( NOT APPLE )
 # check 64 bit
 if( CMAKE_SIZEOF_VOID_P MATCHES "4" )
@@ -17,9 +20,9 @@ IF (WIN32 AND NOT UNIX)
 ENDIF(WIN32 AND NOT UNIX)
 
 IF (WIN32 AND NOT UNIX)
-	set(RAKNET_LIBRARY_LIBS ws2_32.lib)
+	set(RAKNET_LIBRARY_LIBS ws2_32.lib kcp)
 ELSE(WIN32 AND NOT UNIX)
-	set(RAKNET_LIBRARY_LIBS pthread)
+	set(RAKNET_LIBRARY_LIBS pthread kcp)
 ENDIF(WIN32 AND NOT UNIX)
 
 set(CMAKE_DEBUG_POSTFIX "_d")
@@ -30,7 +33,7 @@ option( RAKNET_ENABLE_DLL		"Generate the DLL project if true." 			TRUE )
 option( RAKNET_ENABLE_STATIC	"Generate the static library project if true." 	TRUE )
 option( RAKNET_GENERATE_INCLUDE_ONLY_DIR "Setup a include/RakNet/ directory in which all the headers are copied." FALSE )
 
-set( RAKNETHEADERFILES ${RakNet_SOURCE_DIR}/Source ) #This name doesn't follow CMake conventions but for retro compatibility I'll let it there.
+set( RAKNETHEADERFILES ${RakNet_SOURCE_DIR}/Source) #This name doesn't follow CMake conventions but for retro compatibility I'll let it there.
 
 if( RAKNET_GENERATE_INCLUDE_ONLY_DIR )
 	set( RAKNET_INCLUDE_ONLY_DIR ${RakNet_SOURCE_DIR}/include ) # this will be visible by client code
@@ -57,3 +60,6 @@ set(RAKNET_COMMON_LIBS RakNetLibStatic)
 if( RAKNET_ENABLE_SAMPLES )
 	add_subdirectory(Samples)
 endif()
+
+add_subdirectory(Tests)
+add_subdirectory(DependentExtensions)
