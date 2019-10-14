@@ -37,7 +37,7 @@ namespace RakNet
     {
         RemoteSystem& remoteSystem = *static_cast<RemoteSystem*>(user);
 
-        BitStream bitStream((unsigned char*)buf, len, true);
+        BitStream bitStream((unsigned char*)buf, len, false);
         remoteSystem.reliabilityLayer.SendBitStream(remoteSystem, &bitStream, nullptr,
             RakNet::GetTimeUS() / 1000); // TODO: Use update time
         return 0;
@@ -50,15 +50,15 @@ namespace RakNet
         if (iter == streams.end())
         {
             struct IKCPCB* ikcp = ikcp_create(channel, &remoteSystem);
-            int res = ikcp_nodelay(ikcp, 
+            int res = ikcp_setmtu(ikcp, MTUSize);
+            RakAssert(res == 0, "Invalid MTU %i", MTUSize);
+            res = ikcp_nodelay(ikcp, 
                 1,  // 1 = "nodelay" mode
                 10, // 10 = Protocol internal work interval 10 milliseconds
                 2,  // 2 = 2 ACK spans will result in direct retransmission
                 1   // 1 = Non-concessional Flow Control
             );
             RakAssert(res == 0, "Invalid KCP config");
-            res = ikcp_setmtu(ikcp, MTUSize);
-            RakAssert(res == 0, "Invalid MTU %i", MTUSize);
             ikcp->output = SendKCPPacket;
             streams.insert(std::pair<uint32_t, struct IKCPCB*>(channel, ikcp));
             return ikcp;

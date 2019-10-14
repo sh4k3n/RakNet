@@ -118,20 +118,35 @@ float MeasurePacketDelay(RakNet::TimeMS milliseconds, unsigned short minPing, un
     return mean;
 }
 
+static constexpr RakNet::TimeMS TestLength = 15 * 1000;
+
 TEST_CASE("PacketDelay40msNoPacketLoss")
 {
     unsigned short ping = 40;
-    REQUIRE(MeasurePacketDelay(15 * 1000, ping, ping + (ping / 10), 0.0f) < 50.0f);
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.0f) < 50.0f);
 }
 
 TEST_CASE("PacketDelay40msLightPacketLoss")
 {
     unsigned short ping = 40;
-    REQUIRE(MeasurePacketDelay(15 * 1000, ping, ping + (ping / 10), 0.02f) < 300.0f);
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.02f) < 300.0f);
+}
+
+TEST_CASE("PacketDelay300msLightPacketLoss")
+{
+    unsigned short ping = 300;
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.02f) < 300.0f);
 }
 
 TEST_CASE("PacketDelay40msHeavyPacketLoss")
 {
     unsigned short ping = 40;
-    REQUIRE(MeasurePacketDelay(15 * 1000, ping, ping + (ping / 10), 0.07f) < 1000.0f);
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.07f) < 1000.0f);
 }
+
+TEST_CASE("PacketDelay500msHeavyPacketLoss")
+{
+    unsigned short ping = 500;
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.07f) < 1000.0f);
+}
+

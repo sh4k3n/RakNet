@@ -39,6 +39,7 @@
 #include "PluginInterface2.h"
 #include "Rand.h"
 #include "RakNetSocket2.h"
+#include "MessageIdentifiers.h"
 
 #include <unordered_map>
 
