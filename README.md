@@ -14,12 +14,12 @@ Key features
 
 Issues and deviations from RakNet
 -----------------------------------------
-- Currently no support for sending large files
+- Currently no support for sending large files (> 128KB)
 - Supports only "unreliable" and "reliable ordered" messaging. 
-	- Use separate channels to send reliable unordered data.
-	- It should be trivial to create own protocol for unreliable with ack
+	- For reliable unordered data use "reliable ordered" messaging, but send messages in different channels, when they do not have to be in order
+	- It should be trivial to create own protocol for "unreliable with ack" type of messaging
 - Several minor issues marked with To-Do comments in code
-
+- Encryption and plugin supports are broken
 
 Package notes
 ------------------------------------------
