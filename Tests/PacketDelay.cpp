@@ -34,7 +34,7 @@ float MeasurePacketDelay(RakNet::TimeMS milliseconds, unsigned short minPing, un
         do
         {
             currentTime = RakNet::GetTimeMS();
-            if (numConnections == 2 && static_cast<int>(endTime - currentTime) > 0 &&
+            if (numConnections == 2 && static_cast<int32_t>(endTime - currentTime) > 0 &&
                 static_cast<int>(currentTime - lastSend) > timeBetweenPackets)
             {
                 lastSend = currentTime;
@@ -102,9 +102,9 @@ float MeasurePacketDelay(RakNet::TimeMS milliseconds, unsigned short minPing, un
                 }
             }
             RakSleep(0);
-        } while (static_cast<int>(endTime - currentTime) > 0);
+        } while (static_cast<int32_t>(endTime - currentTime) > 0);
         //printf("Sent=%u Received=%u\n", totalSend, totalReceived);
-    } while (totalReceived != totalSend && static_cast<int>(currentTime - endTime) < 1000);
+    } while (totalReceived != totalSend && static_cast<int32_t>(currentTime - endTime) < 5000);
     env.Stats();
     REQUIRE(totalReceived == totalSend);
     float mean = 1000.0f;
@@ -129,24 +129,41 @@ TEST_CASE("PacketDelay40msNoPacketLoss")
 TEST_CASE("PacketDelay40msLightPacketLoss")
 {
     unsigned short ping = 40;
-    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.02f) < 300.0f);
-}
-
-TEST_CASE("PacketDelay300msLightPacketLoss")
-{
-    unsigned short ping = 300;
-    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.02f) < 300.0f);
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.02f) < 80.0f);
 }
 
 TEST_CASE("PacketDelay40msHeavyPacketLoss")
 {
     unsigned short ping = 40;
-    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.07f) < 1000.0f);
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.07f) < 100.0f);
 }
 
-TEST_CASE("PacketDelay500msHeavyPacketLoss")
+TEST_CASE("PacketDelay250msNoPacketLoss")
+{
+    unsigned short ping = 250;
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.0f) < 350.0f);
+}
+
+TEST_CASE("PacketDelay150msHeavyPacketLoss")
+{
+    unsigned short ping = 150;
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.05f) < 350.0f);
+}
+
+TEST_CASE("PacketDelayVarying")
+{
+    REQUIRE(MeasurePacketDelay(TestLength, 50, 500, 0.00f) < 500.0f);
+}
+
+TEST_CASE("PacketDelay250msLightPacketLoss")
+{
+    unsigned short ping = 250;
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.01f) < 1500.0f);
+}
+
+/*  TODO:
+TEST_CASE("PacketDelay500msNoPacketLoss")
 {
     unsigned short ping = 500;
-    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.07f) < 1000.0f);
-}
-
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.0f) < 600.0f);
+}*/
