@@ -794,7 +794,7 @@ protected:
 	struct RequestedConnectionStruct
 	{
 		SystemAddress systemAddress;
-		RakNet::Time nextRequestTime;
+		RakNet::TimeMS nextRequestTime;
 		unsigned char requestsMade;
 		char *data;
 		unsigned short dataLength;

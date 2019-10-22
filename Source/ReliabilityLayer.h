@@ -43,6 +43,8 @@
 
 #include <unordered_map>
 
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
+
 #if RAKNET_ARQ == RAKNET_ARQ_UDT
 #include "CCRakNetUDT.h"
 #define INCLUDE_TIMESTAMP_WITH_DATAGRAMS 1
@@ -664,4 +666,5 @@ protected:
 
 } // namespace RakNet
 
+#endif
 #endif

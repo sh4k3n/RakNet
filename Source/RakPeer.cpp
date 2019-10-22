@@ -250,12 +250,7 @@ RakPeer::RakPeer()
 	userUpdateThreadPtr=0;
 	userUpdateThreadData=0;
 
-#ifdef _DEBUG
-	// Wait longer to disconnect in debug so I don't get disconnected while tracing
-	defaultTimeoutTime=30000;
-#else
 	defaultTimeoutTime=10000;
-#endif
 
 	bufferedCommands.SetPageSize(sizeof(BufferedCommandStruct)*16);
 	socketQueryOutput.SetPageSize(sizeof(SocketQueryOutput)*8);
@@ -1096,7 +1091,11 @@ void RakPeer::Shutdown( unsigned int blockDuration, unsigned char orderingChanne
 
 		// Remove any remaining packets
 		RakAssert(remoteSystemList[ i ].MTUSize <= MAXIMUM_MTU_SIZE);
-		remoteSystemList[ i ].reliabilityLayer.Reset(false, remoteSystemList[ i ].MTUSize, false);
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+        remoteSystemList[i].reliableChannels.Flush();
+#else
+        remoteSystemList[i].reliabilityLayer.Reset(false, remoteSystemList[i].MTUSize, false);
+#endif	
 		remoteSystemList[ i ].rakNetSocket = 0;
 	}
 
@@ -2483,8 +2482,14 @@ void RakPeer::SetTimeoutTime( RakNet::TimeMS timeMS, const SystemAddress target 
 		{
 			if (remoteSystemList[ i ].isActive)
 			{
-				if ( remoteSystemList[ i ].isActive )
-					remoteSystemList[ i ].reliabilityLayer.SetTimeoutTime(timeMS);
+                if (remoteSystemList[i].isActive)
+                {
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+                    remoteSystemList[i].timeoutTime = timeMS;
+#else
+                    remoteSystemList[i].reliabilityLayer.SetTimeoutTime(timeMS);
+#endif
+                }
 			}
 		}
 	}
@@ -2492,8 +2497,14 @@ void RakPeer::SetTimeoutTime( RakNet::TimeMS timeMS, const SystemAddress target 
 	{
 		RemoteSystemStruct * remoteSystem = GetRemoteSystemFromSystemAddress( target, false, true );
 
-		if ( remoteSystem != 0 )
-			remoteSystem->reliabilityLayer.SetTimeoutTime(timeMS);
+        if (remoteSystem != 0)
+        {
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            remoteSystem->timeoutTime = timeMS;
+#else
+            remoteSystem->reliabilityLayer.SetTimeoutTime(timeMS);
+#endif
+        }
 	}
 }
 
@@ -2509,8 +2520,15 @@ RakNet::TimeMS RakPeer::GetTimeoutTime( const SystemAddress target )
 	{
 		RemoteSystemStruct * remoteSystem = GetRemoteSystemFromSystemAddress( target, false, true );
 
-		if ( remoteSystem != 0 )
-			return remoteSystem->reliabilityLayer.GetTimeoutTime();
+        if (remoteSystem != 0)
+        {
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            return remoteSystem->timeoutTime;
+#else
+            return remoteSystem->reliabilityLayer.GetTimeoutTime();
+#endif
+            
+        }
 	}
 	return defaultTimeoutTime;
 }
@@ -2672,8 +2690,12 @@ int RakPeer::GetSplitMessageProgressInterval(void) const
 void RakPeer::SetUnreliableTimeout(RakNet::TimeMS timeoutMS)
 {
 	unreliableTimeout=timeoutMS;
-	for ( unsigned short i = 0; i < maximumNumberOfPeers; i++ )
-		remoteSystemList[ i ].reliabilityLayer.SetUnreliableTimeout(unreliableTimeout);
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
+    for (unsigned short i = 0; i < maximumNumberOfPeers; i++)
+    {
+        remoteSystemList[i].reliabilityLayer.SetUnreliableTimeout(unreliableTimeout);
+    }
+#endif
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3016,7 +3038,11 @@ RakNetStatistics * RakPeer::GetStatistics( const SystemAddress systemAddress, Ra
 			if (remoteSystemList[ i ].isActive)
 			{
 				RakNetStatistics rnsTemp;
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+                // RakAssert(false); // TODO
+#else
 				remoteSystemList[ i ].reliabilityLayer.GetStatistics(&rnsTemp);
+#endif
 
 				if (firstWrite==false)
 				{
@@ -3035,7 +3061,11 @@ RakNetStatistics * RakPeer::GetStatistics( const SystemAddress systemAddress, Ra
 		rss = GetRemoteSystemFromSystemAddress( systemAddress, false, false );
 		if ( rss && endThreads==false )
 		{
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            // RakAssert(false); // TODO
+#else
 			rss->reliabilityLayer.GetStatistics(systemStats);
+#endif
 			return systemStats;
 		}
 	}
@@ -3060,8 +3090,13 @@ void RakPeer::GetStatisticsList(DataStructures::List<SystemAddress> &addresses, 
 		{
 			addresses.Push((activeSystemList[i])->systemAddress, _FILE_AND_LINE_ );
 			guids.Push((activeSystemList[i])->guid, _FILE_AND_LINE_ );
+
 			RakNetStatistics rns;
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            RakAssert(false); // TODO
+#else
 			(activeSystemList[i])->reliabilityLayer.GetStatistics(&rns);
+#endif
 			statistics.Push(rns, _FILE_AND_LINE_);
 		}
 	}
@@ -3071,7 +3106,11 @@ bool RakPeer::GetStatistics( const unsigned int index, RakNetStatistics *rns )
 {
 	if (index < maximumNumberOfPeers && remoteSystemList[ index ].isActive)
 	{
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+        // RakAssert(false); // TODO
+#else
 		remoteSystemList[ index ].reliabilityLayer.GetStatistics(rns);
+#endif
 		return true;
 	}
 	return false;
@@ -3592,12 +3631,17 @@ RakPeer::RemoteSystemStruct * RakPeer::AssignSystemAddressToRemoteSystemList( co
 			if (incomingMTU > remoteSystem->MTUSize)
 				remoteSystem->MTUSize=incomingMTU;
 			RakAssert(remoteSystem->MTUSize <= MAXIMUM_MTU_SIZE);
-			remoteSystem->reliabilityLayer.Reset(true, remoteSystem->MTUSize, useSecurity);
-#if RAKNET_ARQ != RAKNET_ARQ_KCP
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            remoteSystem->timeLastDatagramArrived = RakNet::GetTimeMS();
+            remoteSystem->lastReliableSend = remoteSystem->timeLastDatagramArrived;
+            remoteSystem->reliableChannels.Reset();
+            remoteSystem->timeoutTime = defaultTimeoutTime;
+#else
+            remoteSystem->reliabilityLayer.Reset(true, remoteSystem->MTUSize, useSecurity);
             remoteSystem->reliabilityLayer.SetSplitMessageProgressInterval(splitMessageProgressInterval);
+            remoteSystem->reliabilityLayer.SetUnreliableTimeout(unreliableTimeout);
+            remoteSystem->reliabilityLayer.SetTimeoutTime(defaultTimeoutTime);
 #endif
-			remoteSystem->reliabilityLayer.SetUnreliableTimeout(unreliableTimeout);
-			remoteSystem->reliabilityLayer.SetTimeoutTime(defaultTimeoutTime);
 			AddToActiveSystemList(assignedIndex);
 			if (incomingRakNetSocket->GetBoundAddress()==bindingAddress)
 			{
@@ -3698,10 +3742,11 @@ RakPeer::RemoteSystemStruct * RakPeer::AssignSystemAddressToRemoteSystemList( co
 			remoteSystem->connectMode=connectionMode;
 			remoteSystem->pingAndClockDifferentialWriteIndex = 0;
 			remoteSystem->lowestPing = 65535;
-			remoteSystem->nextPingTime = 0; // Ping immediately
+			remoteSystem->nextPingTime = time; // Ping immediately
 			remoteSystem->weInitiatedTheConnection = false;
 			remoteSystem->connectionTime = time;
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
+            remoteSystem->timeoutTime = 10000;
             remoteSystem->timeLastDatagramArrived = time;
 #endif
 			remoteSystem->myExternalSystemAddress = UNASSIGNED_SYSTEM_ADDRESS;
@@ -4125,7 +4170,11 @@ void RakPeer::CloseConnectionInternal( const AddressOrGUID& systemIdentifier, bo
 
 					// Clear any remaining messages
 					RakAssert(remoteSystemList[index].MTUSize <= MAXIMUM_MTU_SIZE);
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+                    remoteSystemList[index].reliableChannels.Flush();
+#else
 					remoteSystemList[index].reliabilityLayer.Reset(false, remoteSystemList[index].MTUSize, false);
+#endif
 
 					// Not using this socket
 					remoteSystemList[index].rakNetSocket = 0;
@@ -4318,27 +4367,40 @@ bool RakPeer::SendImmediate( char *data, BitSize_t numberOfBitsToSend, PacketPri
 
 	for (sendListIndex=0; sendListIndex < sendListSize; sendListIndex++)
 	{
-		// Send may split the packet and thus deallocate data.  Don't assume data is valid if we use the callerAllocationData
-#if RAKNET_ARQ_KCP == RAKNET_ARQ_KCP
-        bool useData = false;
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+        auto& remoteSystem = remoteSystemList[sendList[sendListIndex]];
+        uint32_t numberOfBytesToSend = BITS_TO_BYTES(numberOfBitsToSend);
+        if (reliability != UNRELIABLE || numberOfBytesToSend > remoteSystem.MTUSize)
+        {
+            remoteSystem.lastReliableSend = (RakNet::TimeMS)(currentTime / (RakNet::TimeUS)1000);
+            remoteSystem.reliableChannels.Send(remoteSystem, data, numberOfBytesToSend, orderingChannel);
+        }
+        else
+        {
+            BitStream bitStream((unsigned char*)data, numberOfBytesToSend, false);
+            rnet::socket_layer::SendTo(*remoteSystem.rakNetSocket, bitStream,
+                remoteSystem.systemAddress);
+            // callerDataAllocationUsed = true; TODO
+        }
 #else
+        // Send may split the packet and thus deallocate data.  Don't assume data is valid if we use the callerAllocationData
         bool useData = useCallerDataAllocation && callerDataAllocationUsed == false && sendListIndex + 1 == sendListSize;
+        remoteSystemList[sendList[sendListIndex]].reliabilityLayer.Send(
+            remoteSystemList[sendList[sendListIndex]],
+            data, numberOfBitsToSend, priority, reliability, orderingChannel, useData == false, remoteSystemList[sendList[sendListIndex]].MTUSize, currentTime, receipt);
+        if (useData)
+            callerDataAllocationUsed = true;
+        if (reliability == RELIABLE ||
+            reliability == RELIABLE_ORDERED ||
+            reliability == RELIABLE_SEQUENCED ||
+            reliability == RELIABLE_WITH_ACK_RECEIPT ||
+            reliability == RELIABLE_ORDERED_WITH_ACK_RECEIPT
+            //			||
+            //			reliability==RELIABLE_SEQUENCED_WITH_ACK_RECEIPT
+            )
+            remoteSystemList[sendList[sendListIndex]].lastReliableSend = (RakNet::TimeMS)(currentTime / (RakNet::TimeUS)1000);
 #endif
-		remoteSystemList[sendList[sendListIndex]].reliabilityLayer.Send( 
-            remoteSystemList[sendList[sendListIndex]],            
-            data, numberOfBitsToSend, priority, reliability, orderingChannel, useData==false, remoteSystemList[sendList[sendListIndex]].MTUSize, currentTime, receipt );
-		if (useData)
-			callerDataAllocationUsed=true;
 
-		if (reliability==RELIABLE ||
-			reliability==RELIABLE_ORDERED ||
-			reliability==RELIABLE_SEQUENCED ||
-			reliability==RELIABLE_WITH_ACK_RECEIPT ||
-			reliability==RELIABLE_ORDERED_WITH_ACK_RECEIPT
-//			||
-//			reliability==RELIABLE_SEQUENCED_WITH_ACK_RECEIPT
-			)
-			remoteSystemList[sendList[sendListIndex]].lastReliableSend=(RakNet::TimeMS)(currentTime/(RakNet::TimeUS)1000);
 	}
 
 #if !defined(USE_ALLOCA)
@@ -4961,8 +5023,15 @@ bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data,
 
 							remoteSystem->weInitiatedTheConnection=true;
 							remoteSystem->connectMode=RakPeer::RemoteSystemStruct::REQUESTED_CONNECTION;
-							if (rcs->timeoutTime!=0)
-								remoteSystem->reliabilityLayer.SetTimeoutTime(rcs->timeoutTime);
+                            if (rcs->timeoutTime != 0)
+                            {
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+                                remoteSystem->timeoutTime = rcs->timeoutTime;
+#else
+                                remoteSystem->reliabilityLayer.SetTimeoutTime(rcs->timeoutTime);
+#endif
+                                
+                            }
 
 							RakNet::BitStream temp;
 							temp.Write( (MessageID)ID_CONNECTION_REQUEST);
@@ -5415,15 +5484,15 @@ void ProcessNetworkPacket( SystemAddress systemAddress, const char *data, const 
 		// HandleSocketReceiveFromConnectedPlayer is only safe to be called from the same thread as Update, which is this thread
 		if ( isOfflineMessage==false)
 		{
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            remoteSystem->reliableChannels.Input(*remoteSystem, data, length);
+#else
 			remoteSystem->reliabilityLayer.HandleSocketReceiveFromConnectedPlayer(
 				data, length, systemAddress, rakPeer->pluginListNTS, remoteSystem->MTUSize,
                 *remoteSystem,               
                 &rnr, timeRead, updateBitStream);
+#endif
 		}
-	}
-	else
-	{
-		// int a=5;
 	}
 }
 
@@ -5550,7 +5619,7 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 	bool callerDataAllocationUsed;
 	RakNetStatistics *rnss;
 	RakNet::TimeUS timeNS=0;
-	RakNet::Time timeMS=0;
+	RakNet::TimeMS timeMS=0;
 
 
 
@@ -5675,7 +5744,7 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 			RequestedConnectionStruct *rcs;
 			rcs = requestedConnectionQueue[requestedConnectionQueueIndex];
 			requestedConnectionQueueMutex.Unlock();
-			if (rcs->nextRequestTime < timeMS)
+			if (int32_t(rcs->nextRequestTime - timeMS) < 0)
 			{
 				condition1=rcs->requestsMade==rcs->sendConnectionAttemptCount+1;
 				condition2=(bool)((rcs->systemAddress==UNASSIGNED_SYSTEM_ADDRESS)==1);
@@ -5827,37 +5896,54 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 			}
 
 
-			if (timeMS > remoteSystem->lastReliableSend && timeMS-remoteSystem->lastReliableSend > remoteSystem->reliabilityLayer.GetTimeoutTime()/2 && remoteSystem->connectMode==RemoteSystemStruct::CONNECTED)
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            if (remoteSystem->connectMode == RemoteSystemStruct::CONNECTED &&
+                static_cast<int32_t>(timeMS-remoteSystem->lastReliableSend) > remoteSystem->timeoutTime/2)
+#else
+            if (timeMS > remoteSystem->lastReliableSend && timeMS - remoteSystem->lastReliableSend > remoteSystem->reliabilityLayer.GetTimeoutTime() / 2 && remoteSystem->connectMode == RemoteSystemStruct::CONNECTED)
+#endif
 			{
 				// If no reliable packets are waiting for an ack, do a one byte reliable send so that disconnections are noticed
-				RakNetStatistics rakNetStatistics;
-				rnss=remoteSystem->reliabilityLayer.GetStatistics(&rakNetStatistics);
-				if (rnss->messagesInResendBuffer==0)
-				{
-					PingInternal( systemAddress, true, RELIABLE );
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+                if (!remoteSystem->reliableChannels.AreAcksWaiting())
+                {
+                    PingInternal(systemAddress, true, RELIABLE_ORDERED);
+                    remoteSystem->lastReliableSend = timeMS;
+                }
+#else
+                RakNetStatistics rakNetStatistics;
+                rnss=remoteSystem->reliabilityLayer.GetStatistics(&rakNetStatistics);
+                if (rnss->messagesInResendBuffer == 0)
+                {
+                    PingInternal(systemAddress, true, RELIABLE);
 
-					//remoteSystem->lastReliableSend=timeMS+remoteSystem->reliabilityLayer.GetTimeoutTime();
-					remoteSystem->lastReliableSend=timeMS;
-				}
+                    //remoteSystem->lastReliableSend=timeMS+remoteSystem->reliabilityLayer.GetTimeoutTime();
+                    remoteSystem->lastReliableSend = timeMS;
+                }
+#endif
 			}
 
-			remoteSystem->reliabilityLayer.Update( *remoteSystem, remoteSystem->MTUSize, timeNS, maxOutgoingBPS, pluginListNTS, &rnr, updateBitStream ); // systemAddress only used for the internet simulator test
 
-			// Check for failure conditions
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
+            remoteSystem->reliableChannels.Update(timeMS);
+
+            // Check for failure conditions
             if ((( 
-                remoteSystem->connectMode == RemoteSystemStruct::CONNECTED) && (static_cast<int>(timeMS - remoteSystem->timeLastDatagramArrived) > remoteSystem->reliabilityLayer.GetTimeoutTime())) ||
+                remoteSystem->connectMode == RemoteSystemStruct::CONNECTED) && 
+                (static_cast<int32_t>(timeMS - remoteSystem->timeLastDatagramArrived) > remoteSystem->timeoutTime)) ||
                 ((remoteSystem->connectMode == RemoteSystemStruct::DISCONNECT_ASAP || 
                     remoteSystem->connectMode == RemoteSystemStruct::DISCONNECT_ON_NO_ACK || 
-                    remoteSystem->connectMode == RemoteSystemStruct::DISCONNECT_ASAP_SILENTLY) && remoteSystem->reliabilityLayer.IsOutgoingDataWaiting() == false) ||
+                    remoteSystem->connectMode == RemoteSystemStruct::DISCONNECT_ASAP_SILENTLY) && remoteSystem->reliableChannels.IsOutgoingDataWaiting() == false) ||
                 ((
                 (remoteSystem->connectMode == RemoteSystemStruct::REQUESTED_CONNECTION ||
                     remoteSystem->connectMode == RemoteSystemStruct::HANDLING_CONNECTION_REQUEST ||
                     remoteSystem->connectMode == RemoteSystemStruct::UNVERIFIED_SENDER)
-                    && timeMS > remoteSystem->connectionTime && timeMS - remoteSystem->connectionTime > 10000))
+                    && static_cast<int32_t>(timeMS - remoteSystem->connectionTime) > 10000))
                 )
 #else
-			if ( remoteSystem->reliabilityLayer.IsDeadConnection() ||
+            remoteSystem->reliabilityLayer.Update(*remoteSystem, remoteSystem->MTUSize, timeNS, maxOutgoingBPS, pluginListNTS, &rnr, updateBitStream); // systemAddress only used for the internet simulator test
+
+            if ( remoteSystem->reliabilityLayer.IsDeadConnection() ||
 				((remoteSystem->connectMode==RemoteSystemStruct::DISCONNECT_ASAP || remoteSystem->connectMode==RemoteSystemStruct::DISCONNECT_ASAP_SILENTLY) && remoteSystem->reliabilityLayer.IsOutgoingDataWaiting()==false) ||
 				(remoteSystem->connectMode==RemoteSystemStruct::DISCONNECT_ON_NO_ACK && (remoteSystem->reliabilityLayer.AreAcksWaiting()==false || remoteSystem->reliabilityLayer.AckTimeout(timeMS)==true)) ||
 				((
@@ -5923,7 +6009,11 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 
 			// Does the reliability layer have any packets waiting for us?
 			// To be thread safe, this has to be called in the same thread as HandleSocketReceiveFromConnectedPlayer
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+            bitSize = remoteSystem->reliableChannels.Receive(&data);
+#else
 			bitSize = remoteSystem->reliabilityLayer.Receive( &data );
+#endif
 
 			while ( bitSize > 0 )
 			{
@@ -5955,7 +6045,11 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 
 						char str1[64];
 						systemAddress.ToString(false, str1);
-						AddToBanList(str1, remoteSystem->reliabilityLayer.GetTimeoutTime());
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+                        AddToBanList(str1, remoteSystem->timeoutTime);
+#else
+                        AddToBanList(str1, remoteSystem->reliabilityLayer.GetTimeoutTime());
+#endif
 
 
 						rakFree_Ex(data, _FILE_AND_LINE_ );
@@ -6259,7 +6353,11 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 
 				// Does the reliability layer have any more packets waiting for us?
 				// To be thread safe, this has to be called in the same thread as HandleSocketReceiveFromConnectedPlayer
-				bitSize = remoteSystem->reliabilityLayer.Receive( &data );
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+				bitSize = remoteSystem->reliableChannels.Receive( &data );
+#else
+                bitSize = remoteSystem->reliabilityLayer.Receive(&data);
+#endif
 			}
 		
 	}

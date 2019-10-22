@@ -1,7 +1,11 @@
 #pragma once
 
+#include <rnet/NetworkSimulator.h>
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+#include <rnet/relay/ReliableChannels.h>
+#else
 #include "ReliabilityLayer.h"
-#include "rnet/NetworkSimulator.h"
+#endif
 
 namespace RakNet
 {
@@ -20,16 +24,21 @@ namespace RakNet
         SystemAddress systemAddress;  /// Their external IP on the internet
         SystemAddress myExternalSystemAddress;  /// Your external IP on the internet, from their perspective
         SystemAddress theirInternalSystemAddress[MAXIMUM_NUMBER_OF_INTERNAL_IDS];  /// Their internal IP, behind the LAN
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+        rnet::ReliableChannels reliableChannels;
+#else
         ReliabilityLayer reliabilityLayer;  /// The reliability layer associated with this player
+#endif
         bool weInitiatedTheConnection; /// True if we started this connection via Connect.  False if someone else connected to us.
         PingAndClockDifferential pingAndClockDifferential[PING_TIMES_ARRAY_SIZE];  /// last x ping times and calculated clock differentials with it
         RakNet::Time pingAndClockDifferentialWriteIndex;  /// The index we are writing into the pingAndClockDifferential circular buffer
         unsigned short lowestPing; ///The lowest ping value encountered
         RakNet::Time nextPingTime;  /// When to next ping this player
-        RakNet::Time lastReliableSend; /// When did the last reliable send occur.  Reliable sends must occur at least once every timeoutTime/2 units to notice disconnects
+        RakNet::TimeMS lastReliableSend; /// When did the last reliable send occur.  Reliable sends must occur at least once every timeoutTime/2 units to notice disconnects
         RakNet::Time connectionTime; /// connection time, if active.
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-        RakNet::Time timeLastDatagramArrived;
+        RakNet::TimeMS timeLastDatagramArrived;
+        RakNet::TimeMS timeoutTime;
 #endif
     //		int connectionSocketIndex; // index into connectionSockets to send back on.
         RakNetGUID guid;
