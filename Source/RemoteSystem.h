@@ -35,7 +35,7 @@ namespace RakNet
         unsigned short lowestPing; ///The lowest ping value encountered
         RakNet::Time nextPingTime;  /// When to next ping this player
         RakNet::TimeMS lastReliableSend; /// When did the last reliable send occur.  Reliable sends must occur at least once every timeoutTime/2 units to notice disconnects
-        RakNet::Time connectionTime; /// connection time, if active.
+        RakNet::TimeMS connectionTime; /// connection time, if active.
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
         RakNet::TimeMS timeLastDatagramArrived;
         RakNet::TimeMS timeoutTime;

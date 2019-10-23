@@ -29,7 +29,10 @@ namespace rnet
 
     void ReliableChannels::Flush()
     {
-        Reset();
+        std::for_each(myOrderedChannels.begin(), myOrderedChannels.end(), [](auto& iter)
+        {
+            ikcp_flush(iter);
+        });
     }
 
     void ReliableChannels::Reset()
@@ -108,10 +111,11 @@ namespace rnet
             struct IKCPCB* ikcp = ikcp_create(channel, &remoteSystem);
             int res = ikcp_setmtu(ikcp, remoteSystem.MTUSize);
             RNetAssert(res == 0, "Invalid MTU %i", remoteSystem.MTUSize);
+            const int WorkInterval = 10; // Protocol internal work interval in milliseconds
+            const int ResendAckSpans = 2; // Number of ACK spans result in direct retransmission
             res = ikcp_nodelay(ikcp,
                 1,  // 1 = "nodelay" mode
-                10, // 10 = Protocol internal work interval 10 milliseconds
-                2,  // 2 = 2 ACK spans will result in direct retransmission
+                WorkInterval, ResendAckSpans,
                 1   // 1 = Non-concessional Flow Control
             );
             RNetAssert(res == 0, "Invalid KCP config");
@@ -123,10 +127,28 @@ namespace rnet
         return myOrderedChannels[iter->second];
     }
 
-    void ReliableChannels::Update(TimeMS time)
+    void ReliableChannels::Update(const RemoteSystem& remoteSystem, TimeMS time)
     {
-        std::for_each(myOrderedChannels.begin(), myOrderedChannels.end(), [&time](auto& iter)
+        // TODO: Implement good way to choose correct window size
+        // See. https://www.auvik.com/franklymsp/blog/tcp-window-size/
+        const uint16_t MaxRTT = remoteSystem.lowestPing;
+        const uint16_t TickRate = 60;
+        int wnd = TickRate * 2 * MaxRTT / 1000;
+        if (wnd < 32)
         {
+            wnd = 32;            
+        }
+        else if (wnd > 256)
+        {
+            wnd = 256;
+        }
+
+        std::for_each(myOrderedChannels.begin(), myOrderedChannels.end(), [&](ikcpcb* iter)
+        {
+            if (iter->snd_wnd != wnd)
+            {
+                ikcp_wndsize(iter, wnd, wnd);
+            }
             ikcp_update(iter, time);
         });
     }

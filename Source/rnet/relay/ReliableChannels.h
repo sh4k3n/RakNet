@@ -17,17 +17,6 @@ namespace RakNet
 {
     struct RemoteSystem;
     class BitStream;
-
-    /*class BPSTracker
-    {
-    public:
-        class TimeAndValue2
-        {
-        public:
-            TimeAndValue2() {}
-            ~TimeAndValue2() {}
-        };
-    };*/
 }
 
 namespace rnet
@@ -47,7 +36,7 @@ namespace rnet
         uint32_t Receive(unsigned char**data);
         bool Send(RemoteSystem& remoteSystem, char *data, uint32_t numberOfBytesToSend, 
             unsigned char orderingChannel);
-        void Update(TimeMS time);
+        void Update(const RemoteSystem& remoteSystem, TimeMS time);
         bool IsOutgoingDataWaiting(void);
         bool AreAcksWaiting(void);
 

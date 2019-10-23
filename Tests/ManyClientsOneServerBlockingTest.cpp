@@ -208,7 +208,6 @@ Connect function returns false and peer is not connected to anything and does no
 */
 int ManyClientsOneServerBlockingTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
-
 	const int clientNum= 256;
 
 	RakPeerInterface *clientList[clientNum];//A list of clients
@@ -258,7 +257,7 @@ int ManyClientsOneServerBlockingTest::RunTest(DataStructures::List<RakString> pa
 
 	printf("Entering disconnect loop \n");
 
-	while(GetTimeMS()-entryTime<10000)//Run for 10 Secoonds
+	while(int32_t(GetTimeMS()-entryTime)<10000)//Run for 10 Secoonds
 	{
 
 		//Disconnect all clients IF connected to any from client side

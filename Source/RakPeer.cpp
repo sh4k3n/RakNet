@@ -3632,7 +3632,7 @@ RakPeer::RemoteSystemStruct * RakPeer::AssignSystemAddressToRemoteSystemList( co
 				remoteSystem->MTUSize=incomingMTU;
 			RakAssert(remoteSystem->MTUSize <= MAXIMUM_MTU_SIZE);
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-            remoteSystem->timeLastDatagramArrived = RakNet::GetTimeMS();
+            remoteSystem->timeLastDatagramArrived = time;
             remoteSystem->lastReliableSend = remoteSystem->timeLastDatagramArrived;
             remoteSystem->reliableChannels.Reset();
             remoteSystem->timeoutTime = defaultTimeoutTime;
@@ -3745,10 +3745,6 @@ RakPeer::RemoteSystemStruct * RakPeer::AssignSystemAddressToRemoteSystemList( co
 			remoteSystem->nextPingTime = time; // Ping immediately
 			remoteSystem->weInitiatedTheConnection = false;
 			remoteSystem->connectionTime = time;
-#if RAKNET_ARQ == RAKNET_ARQ_KCP
-            remoteSystem->timeoutTime = 10000;
-            remoteSystem->timeLastDatagramArrived = time;
-#endif
 			remoteSystem->myExternalSystemAddress = UNASSIGNED_SYSTEM_ADDRESS;
 			remoteSystem->lastReliableSend=time;
 
@@ -5862,8 +5858,10 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 					requestedConnectionQueueIndex++;
 				}
 			}
-			else
-				requestedConnectionQueueIndex++;
+            else
+            {
+                requestedConnectionQueueIndex++;
+            }
 
 			requestedConnectionQueueMutex.Lock();
 		}
@@ -5925,7 +5923,7 @@ bool RakPeer::RunUpdateCycle(BitStream &updateBitStream )
 
 
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-            remoteSystem->reliableChannels.Update(timeMS);
+            remoteSystem->reliableChannels.Update(*remoteSystem, timeMS);
 
             // Check for failure conditions
             if ((( 

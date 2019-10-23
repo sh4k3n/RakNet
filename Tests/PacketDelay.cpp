@@ -103,8 +103,8 @@ float MeasurePacketDelay(RakNet::TimeMS milliseconds, unsigned short minPing, un
             }
             RakSleep(0);
         } while (static_cast<int32_t>(endTime - currentTime) > 0);
-        //printf("Sent=%u Received=%u\n", totalSend, totalReceived);
-    } while (totalReceived != totalSend && static_cast<int32_t>(currentTime - endTime) < 5000);
+        // printf("Sent=%u Received=%u\n", totalSend, totalReceived);
+    } while (totalReceived != totalSend && static_cast<int32_t>(currentTime - endTime) < 2000);
     env.Stats();
     REQUIRE(totalReceived == totalSend);
     float mean = 1000.0f;
@@ -150,20 +150,19 @@ TEST_CASE("PacketDelay150msHeavyPacketLoss")
     REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.05f) < 350.0f);
 }
 
+TEST_CASE("PacketDelay250msLightPacketLoss")
+{
+    unsigned short ping = 250;
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.01f) < 400.0f);
+}
+
 TEST_CASE("PacketDelayVarying")
 {
     REQUIRE(MeasurePacketDelay(TestLength, 50, 500, 0.00f) < 500.0f);
 }
 
-TEST_CASE("PacketDelay250msLightPacketLoss")
-{
-    unsigned short ping = 250;
-    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.01f) < 1500.0f);
-}
-
-/*  TODO:
 TEST_CASE("PacketDelay500msNoPacketLoss")
 {
     unsigned short ping = 500;
     REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.0f) < 600.0f);
-}*/
+}
