@@ -144,11 +144,15 @@ enum DefaultMessageIDTypes
 	/// RakPeer - Inform a remote system of our IP/Port. On the recipient, all data past ID_ADVERTISE_SYSTEM is whatever was passed to
 	/// the data parameter
 	ID_ADVERTISE_SYSTEM,
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+    ID_BIG_DATA,
+#else
 	// RakPeer - Downloading a large message. Format is ID_DOWNLOAD_PROGRESS (MessageID), partCount (unsigned int),
 	///  partTotal (unsigned int),
 	/// partLength (unsigned int), first part data (length <= MAX_MTU_SIZE). See the three parameters partCount, partTotal
 	///  and partLength in OnFileProgress in FileListTransferCBInterface.h
 	ID_DOWNLOAD_PROGRESS,
+#endif
 	
 	/// ConnectionGraph2 plugin - In a client/server environment, a client other than ourselves has disconnected gracefully.
 	///   Packet::systemAddress is modified to reflect the systemAddress of this client.

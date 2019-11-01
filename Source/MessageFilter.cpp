@@ -371,8 +371,10 @@ void MessageFilter::OnClosedConnection(const SystemAddress &systemAddress, RakNe
 	case ID_REMOTE_DISCONNECTION_NOTIFICATION:
 	case ID_REMOTE_CONNECTION_LOST:
 	case ID_REMOTE_NEW_INCOMING_CONNECTION:
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	case ID_DOWNLOAD_PROGRESS:
 		break;
+#endif
 	default:
 		if (packet->data[0]==ID_TIMESTAMP)
 		{

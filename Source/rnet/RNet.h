@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <rnet/RNetConfig.h>
 
 #ifdef _RETAIL

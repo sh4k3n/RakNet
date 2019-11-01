@@ -7,6 +7,7 @@
 #include "remotesystem.h"
 #include "BitStream.h"
 #include <rnet/SocketLayer.h>
+#include <rnet/relay/BigDataBuffer.h>
 
 namespace rnet
 {
@@ -20,6 +21,7 @@ namespace rnet
 
     ReliableChannels::ReliableChannels()
     {
+        std::fill(myIsBigDataActive.begin(), myIsBigDataActive.end(), false);
     }
 
     ReliableChannels::~ReliableChannels()
@@ -72,14 +74,60 @@ namespace rnet
         while (myReceiveProcessIndex < myOrderedChannels.size())
         {
             auto& channel = myOrderedChannels[myReceiveProcessIndex];
-            int nextSize = ikcp_peeksize(channel);
-            if (nextSize > 0)
+            for (;;)
             {
-                char* newBuffer = (char*)malloc(nextSize);
-                auto res = ikcp_recv(channel, newBuffer, nextSize);
-                RNetAssert(res >= 0);
-                *data = (unsigned char*)newBuffer;
-                return nextSize * 8;
+                int nextSize = ikcp_peeksize(channel);
+                if (nextSize <= 0)
+                {
+                    break;
+                }
+
+                if (!myIsBigDataActive[myReceiveProcessIndex])
+                {
+                    char* newBuffer = (char*)malloc(nextSize);
+                    auto res = ikcp_recv(channel, newBuffer, nextSize);
+                    RNetAssert(res >= 0);
+
+                    if (newBuffer[0] != ID_BIG_DATA)
+                    {
+                        *data = (unsigned char*)newBuffer;
+                        return nextSize * 8;
+                    }
+                    else
+                    {
+                        if (nextSize == 5)
+                        {
+                            BitStream stream((unsigned char*)(&newBuffer[1]), nextSize, false);
+                            uint32_t totalSize;
+                            stream.Read(totalSize);
+                            if (myBigDataBuffers[myReceiveProcessIndex].Reserve(totalSize))
+                            {
+                                myIsBigDataActive[myReceiveProcessIndex] = true;
+                            }
+                        }
+                        free(newBuffer);
+                    }
+                }
+                else
+                {
+                    BigDataBuffer& buffer = myBigDataBuffers[myReceiveProcessIndex];
+                    RNetAssert(nextSize <= buffer.myTotalSize - buffer.myUsedSize, "Invalid size");
+                    {
+                        int res = ikcp_recv(channel, &buffer.myBuffer[buffer.myUsedSize], nextSize);
+                        RNetAssert(res >= 0);
+                        buffer.myUsedSize += nextSize;
+
+                        if (buffer.myTotalSize == buffer.myUsedSize)
+                        {
+                            *data = (unsigned char*)buffer.myBuffer;
+                            buffer.myBuffer = nullptr;
+                            nextSize = buffer.myTotalSize;
+                            myBigDataBuffers[myReceiveProcessIndex].Free();
+                            myIsBigDataActive[myReceiveProcessIndex] = false;
+                            return nextSize * 8;
+                        }
+                    }
+                }
             }
             myReceiveProcessIndex++;
         }
@@ -99,8 +147,33 @@ namespace rnet
         {
             return true;
         }
-        RNetAbnormal(false);// Too many segments?
-        return false;
+
+        // TODO: Configure based on MTU
+        const uint32_t SegmentSize = 64 * 1024;
+        if (numberOfBytesToSend < SegmentSize)
+        {
+            RNetAbnormal(false);
+            return false;
+        }
+
+        {
+            BitStream bigDataInd;
+            bigDataInd.Write(char(ID_BIG_DATA));
+            bigDataInd.Write(numberOfBytesToSend);
+            result = ikcp_send(stream, reinterpret_cast<char*>(bigDataInd.GetData()), bigDataInd.GetNumberOfBytesUsed());
+            RNetAssert(result >= 0);
+        }
+        auto splits = (numberOfBytesToSend + (numberOfBytesToSend % (SegmentSize))) / (SegmentSize);
+        auto pos = 0;
+        while(pos < numberOfBytesToSend - (SegmentSize))
+        {
+            result = ikcp_send(stream, &data[pos], SegmentSize);
+            RNetAssert(result >= 0);
+            pos += SegmentSize;
+        }
+        result = ikcp_send(stream, &data[pos], numberOfBytesToSend - pos);
+        RNetAssert(result >= 0);
+        return true;
     }
 
     struct IKCPCB* ReliableChannels::EnsureChannel(uint32_t channel, RemoteSystem& remoteSystem)
@@ -129,28 +202,37 @@ namespace rnet
 
     void ReliableChannels::Update(const RemoteSystem& remoteSystem, TimeMS time)
     {
-        // TODO: Implement good way to choose correct window size
-        // See. https://www.auvik.com/franklymsp/blog/tcp-window-size/
-        const uint16_t MaxRTT = remoteSystem.lowestPing;
-        const uint16_t TickRate = 60;
-        int wnd = TickRate * 2 * MaxRTT / 1000;
-        if (wnd < 32)
+        for (size_t i = 0; i < myOrderedChannels.size(); ++i)        
         {
-            wnd = 32;            
-        }
-        else if (wnd > 256)
-        {
-            wnd = 256;
-        }
+            ikcpcb* iter = myOrderedChannels[i];
+            int wnd;
+            if (!myIsBigDataActive[i])
+            {
+                // TODO: Implement good way to choose correct window size. Need bigger window size for big data.
+                // See. https://www.auvik.com/franklymsp/blog/tcp-window-size/
+                const uint16_t MaxRTT = remoteSystem.lowestPing;
+                const uint16_t TickRate = 60;
+                wnd = TickRate * 2 * MaxRTT / 1000;
+                if (wnd < 32)
+                {
+                    wnd = 32;
+                }
+                else if (wnd > 256)
+                {
+                    wnd = 256;
+                }
+            }
+            else
+            {
+                wnd = 256;
+            }
 
-        std::for_each(myOrderedChannels.begin(), myOrderedChannels.end(), [&](ikcpcb* iter)
-        {
             if (iter->snd_wnd != wnd)
             {
                 ikcp_wndsize(iter, wnd, wnd);
             }
             ikcp_update(iter, time);
-        });
+        }
     }
 
     bool ReliableChannels::IsOutgoingDataWaiting(void)

@@ -56,11 +56,19 @@
 #ifndef _RAKNET_SUPPORT_ConnectionGraph2
 #define _RAKNET_SUPPORT_ConnectionGraph2 1
 #endif
-#ifndef _RAKNET_SUPPORT_DirectoryDeltaTransfer
-#define _RAKNET_SUPPORT_DirectoryDeltaTransfer 1
-#endif
 #ifndef _RAKNET_SUPPORT_FileListTransfer
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 #define _RAKNET_SUPPORT_FileListTransfer 1
+#else
+#define _RAKNET_SUPPORT_FileListTransfer 0
+#endif
+#endif
+#ifndef _RAKNET_SUPPORT_DirectoryDeltaTransfer
+#if _RAKNET_SUPPORT_FileListTransfer
+#define _RAKNET_SUPPORT_DirectoryDeltaTransfer 1
+#else
+#define _RAKNET_SUPPORT_DirectoryDeltaTransfer 0
+#endif
 #endif
 #ifndef _RAKNET_SUPPORT_FullyConnectedMesh
 #define _RAKNET_SUPPORT_FullyConnectedMesh 1
@@ -120,7 +128,11 @@
 #define _RAKNET_SUPPORT_RakNetTransport 1
 #endif
 #ifndef _RAKNET_SUPPORT_TelnetTransport
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 #define _RAKNET_SUPPORT_TelnetTransport 1
+#else
+#define _RAKNET_SUPPORT_TelnetTransport 0
+#endif
 #endif
 #ifndef _RAKNET_SUPPORT_TCPInterface
 #define _RAKNET_SUPPORT_TCPInterface 1
@@ -141,7 +153,11 @@
 #define _RAKNET_SUPPORT_HTTPConnection2 1
 #endif
 #ifndef _RAKNET_SUPPORT_PacketizedTCP
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 #define _RAKNET_SUPPORT_PacketizedTCP 1
+#else
+#define _RAKNET_SUPPORT_PacketizedTCP 0
+#endif
 #endif
 #ifndef _RAKNET_SUPPORT_TwoWayAuthentication
 #define _RAKNET_SUPPORT_TwoWayAuthentication 1
@@ -177,7 +193,11 @@
 // Take care of dependencies
 #if _RAKNET_SUPPORT_DirectoryDeltaTransfer==1
 #undef _RAKNET_SUPPORT_FileListTransfer
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 #define _RAKNET_SUPPORT_FileListTransfer 1
+#else
+#define _RAKNET_SUPPORT_FileListTransfer 0
+#endif
 #endif
 #if _RAKNET_SUPPORT_FullyConnectedMesh2==1
 #undef _RAKNET_SUPPORT_ConnectionGraph2

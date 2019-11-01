@@ -144,8 +144,7 @@ int PacketAndLowLevelTestsTest::RunTest(DataStructures::List<RakString> params,b
 
 	printf("Test AllocatePacket\n");
 	Packet * hugePacket,*hugePacket2;
-    // TODO: KCP does not support really big data sizes, probably need to add extra wrappers for big data?
-    const int dataSize = 128 * 1024;//3000000;//around 30 meg didn't want to calculate the exact
+    const int dataSize = 3000000;//around 30 meg didn't want to calculate the exact
 	hugePacket=client->AllocatePacket(dataSize);
 	hugePacket2=client->AllocatePacket(dataSize);
 

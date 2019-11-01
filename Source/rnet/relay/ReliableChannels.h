@@ -3,9 +3,12 @@
 #include "RakNetTime.h"
 #include "MessageIdentifiers.h"
 
+#include <rnet/relay/BigDataBuffer.h>
+
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
 #include <unordered_map>
 #include <vector>
+#include <array>
 
 /// Number of ordered streams available. You can use up to 32 ordered streams
 // TODO: Currently limited to first message id (ID_CONNECTED_PING=32)
@@ -24,6 +27,7 @@ namespace rnet
     using RemoteSystem = struct RakNet::RemoteSystem;
     using BitStream = RakNet::BitStream;
     using TimeMS = RakNet::TimeMS;
+    class BigDataBuffer;
 
     class ReliableChannels
     {
@@ -46,6 +50,9 @@ namespace rnet
         std::vector<struct IKCPCB*> myOrderedChannels;
         uint32_t myReceiveProcessIndex = 0;
         std::unordered_map<uint32_t, uint8_t> myIdToChannel;
+        std::array<BigDataBuffer, NUMBER_OF_ORDERED_STREAMS> myBigDataBuffers;
+        std::array<bool, NUMBER_OF_ORDERED_STREAMS> myIsBigDataActive;
+        
     };
 
 }
