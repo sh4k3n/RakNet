@@ -21,6 +21,7 @@
 #include "DebugTools.h"
 #include "CommonFunctions.h"
 #include "RakTimer.h"
+#include <rnet/RNetStats.h>
 
 using namespace RakNet;
 class TestHelpers
@@ -43,3 +44,9 @@ public:
 	static bool SendTestPacketDirected(RakPeerInterface *sender,char * ip,int port,PacketReliability rel=RELIABLE_ORDERED,PacketPriority pr=HIGH_PRIORITY,int typeNum=ID_USER_PACKET_ENUM+1);
 
 };
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+namespace RakNet
+{
+	extern void StatisticsToString(rnet::Stats *s, char *buffer, int verbosityLevel);
+}
+#endif

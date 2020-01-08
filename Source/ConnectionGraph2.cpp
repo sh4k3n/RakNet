@@ -295,7 +295,6 @@ PluginReceiveResult ConnectionGraph2::OnReceive(Packet *packet)
 				bs.Read(saag.systemAddress);
 				bs.Read(saag.guid);
 				bs.Read(saag.sendersPingToThatSystem);
-				bool objectExists;
 				unsigned int ii = remoteSystems[idx]->remoteConnections.GetIndexFromKey(saag, &objectExists);
 				if (objectExists==false)
 					remoteSystems[idx]->remoteConnections.InsertAtIndex(saag,ii,_FILE_AND_LINE_);

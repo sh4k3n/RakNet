@@ -1,5 +1,4 @@
-
 namespace rnet
 {
-    static constexpr bool EnableEncryption = false;
+	static constexpr bool EnableEncryption = false;
 }

@@ -23,34 +23,33 @@
 #include <memory.h>
 
 
-
-
-
-
-
 using namespace RakNet;
 
 StringCompressor* StringCompressor::instance=0;
-int StringCompressor::referenceCount=0;
+
+class Counter
+{
+public:
+	Counter() : count(0) {}
+	std::atomic<int> count;
+};
+
+static Counter reference;
 
 void StringCompressor::AddReference(void)
 {
-	if (++referenceCount==1)
+	if (++reference.count==1)
 	{
 		instance = RakNet::OP_NEW<StringCompressor>( _FILE_AND_LINE_ );
 	}
 }
 void StringCompressor::RemoveReference(void)
 {
-	RakAssert(referenceCount > 0);
-
-	if (referenceCount > 0)
+	RakAssert(reference.count > 0);
+	if (--reference.count ==0)
 	{
-		if (--referenceCount==0)
-		{
-			RakNet::OP_DELETE(instance, _FILE_AND_LINE_);
-			instance=0;
-		}
+		RakNet::OP_DELETE(instance, _FILE_AND_LINE_);
+		instance=0;
 	}
 }
 

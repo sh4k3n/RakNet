@@ -44,7 +44,7 @@ public:
 
 		if (onFileStruct->fileName && onFileStruct->fileData && subdirLen < strlen(onFileStruct->fileName))
 		{
-			strcpy(fullPathToDir, outputSubdir);
+			strcpy_s(fullPathToDir, outputSubdir);
 			strcat(fullPathToDir, onFileStruct->fileName+subdirLen);
 			WriteFileWithDirectories(fullPathToDir, (char*)onFileStruct->fileData, (unsigned int ) onFileStruct->byteLengthOfThisFile);
 		}

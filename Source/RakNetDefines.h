@@ -8,11 +8,12 @@
  *
  */
 
-#ifndef __RAKNET_DEFINES_H
-#define __RAKNET_DEFINES_H
+#pragma once
+
 
 // If you want to change these defines, put them in RakNetDefinesOverrides so your changes are not lost when updating RakNet
 // The user should not edit this file
+#include <stdint.h>
 #include "RakNetDefinesOverrides.h"
 
 /// Define __GET_TIME_64BIT to have RakNet::TimeMS use a 64, rather than 32 bit value.  A 32 bit value will overflow after about 5 weeks.
@@ -31,7 +32,7 @@
 /// Define __BITSTREAM_NATIVE_END to NOT support endian swapping in the BitStream class.  This is faster and is what you should use
 /// unless you actually plan to have different endianness systems connect to each other
 /// Enabled by default.
-// #define __BITSTREAM_NATIVE_END
+#define __BITSTREAM_NATIVE_END
 
 /// Maximum (stack) size to use with _alloca before using new and delete instead.
 #ifndef MAX_ALLOCA_STACK_ALLOCATION
@@ -197,11 +198,3 @@
 #define CC_DEBUG_PRINTF_3(x,y,z)
 #define CC_DEBUG_PRINTF_4(x,y,z,a)
 #define CC_DEBUG_PRINTF_5(x,y,z,a,b)
-//#define CC_DEBUG_PRINTF_1(x) printf(x)
-//#define CC_DEBUG_PRINTF_2(x,y) printf(x,y)
-//#define CC_DEBUG_PRINTF_3(x,y,z) printf(x,y,z)
-//#define CC_DEBUG_PRINTF_4(x,y,z,a) printf(x,y,z,a)
-//#define CC_DEBUG_PRINTF_5(x,y,z,a,b) printf(x,y,z,a,b)
-
-
-#endif // __RAKNET_DEFINES_H

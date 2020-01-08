@@ -181,7 +181,11 @@
 #define _RAKNET_SUPPORT_UDPForwarder 1
 #endif
 #ifndef _RAKNET_SUPPORT_StatisticsHistory
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 #define _RAKNET_SUPPORT_StatisticsHistory 1
+#else
+#define _RAKNET_SUPPORT_StatisticsHistory 0
+#endif
 #endif
 #ifndef _RAKNET_SUPPORT_LibVoice
 #define _RAKNET_SUPPORT_LibVoice 0

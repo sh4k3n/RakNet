@@ -328,7 +328,7 @@ BytesPerMicrosecond CCRakNetUDT::CalculateListMedianRecursive(const BytesPerMicr
 		else
 			greaterThanMedian[greaterThanMedianListLength++]=inputList[i];
 	}
-	RakAssert(CC_RAKNET_UDT_PACKET_HISTORY_LENGTH%2==0);
+	static_assert(CC_RAKNET_UDT_PACKET_HISTORY_LENGTH%2==0, "Raknet error");
 	if (lessThanMedianListLength+lessThanSum==greaterThanMedianListLength+greaterThanSum+1 ||
 		lessThanMedianListLength+lessThanSum==greaterThanMedianListLength+greaterThanSum-1)
 		return median;
@@ -368,7 +368,7 @@ CCTimeType CCRakNetUDT::GetSenderRTOForACK(void) const
 	return (CCTimeType)(RTT + RTTVarMultiple * RTTVar + SYN);
 }
 // ----------------------------------------------------------------------------------------------------------------------------
-CCTimeType CCRakNetUDT::GetRTOForRetransmission(unsigned char timesSent) const
+CCTimeType CCRakNetUDT::GetRTOForRetransmission(unsigned char /*timesSent*/) const
 {
 #if CC_TIME_TYPE_BYTES==4
 	const CCTimeType maxThreshold=10000;
@@ -392,7 +392,7 @@ CCTimeType CCRakNetUDT::GetRTOForRetransmission(unsigned char timesSent) const
 	return ret;
 }
 // ----------------------------------------------------------------------------------------------------------------------------
-void CCRakNetUDT::OnResend(CCTimeType curTime, RakNet::TimeUS nextActionTime)
+void CCRakNetUDT::OnResend(CCTimeType curTime, RakNet::TimeUS /*nextActionTime*/)
 {
 	(void) curTime;
 
@@ -428,13 +428,14 @@ void CCRakNetUDT::OnNAK(CCTimeType curTime, DatagramSequenceNumberType nakSequen
 	if (hadPacketlossThisBlock==false)
 	{
 		// Logging
-		//printf("Sending SLOWER due to NAK, Rate=%f MBPS. Rtt=%i\n", GetLocalSendRate(),  lastRtt );
+		RAKNET_DEBUG_PRINTF("Sending SLOWER due to NAK, Rate=%f MBPS. Rtt=%i", GetLocalSendRate(),  lastRtt );
 		if (pingsLastInterval.Size()>10)
 		{
-			for (int i=0; i < 10; i++)
-				printf("%i, ", pingsLastInterval[pingsLastInterval.Size()-1-i]/1000);
+			for (int i = 0; i < 10; i++)
+			{
+				RAKNET_DEBUG_PRINTF("Interval=%i", pingsLastInterval[pingsLastInterval.Size() - 1 - i] / 1000);
+			}
 		}
-		printf("\n");
 		IncreaseTimeBetweenSends();
 
 		hadPacketlossThisBlock=true;
@@ -645,7 +646,7 @@ void CCRakNetUDT::UpdateWindowSizeAndAckOnAckPerSyn(CCTimeType curTime, CCTimeTy
 	}
 
 	pingsLastInterval.Push(rtt,__FILE__,__LINE__);
-	static const int intervalSize=33; // Should be odd
+	static const unsigned int intervalSize=33; // Should be odd
 	if (pingsLastInterval.Size()>intervalSize)
 		pingsLastInterval.Pop();
 	if (GreaterThan(sequenceNumber, nextCongestionControlBlock) &&
@@ -673,13 +674,13 @@ void CCRakNetUDT::UpdateWindowSizeAndAckOnAckPerSyn(CCTimeType curTime, CCTimeTy
 		else if (slopeSum > .10*average)
 		{
 			// Logging
-			//printf("Ping rising. slope=%f%%. Rate=%f MBPS. Rtt=%i\n", 100.0*slopeSum/average, GetLocalSendRate(),  rtt );
+			RAKNET_DEBUG_PRINTF("Ping rising. slope=%f%%. Rate=%f MBPS. Rtt=%i\n", 100.0*slopeSum/average, GetLocalSendRate(),  rtt );
 			IncreaseTimeBetweenSends();
 		}
 		else
 		{
 			// Logging
-			//printf("Ping stable. slope=%f%%. Rate=%f MBPS. Rtt=%i\n", 100.0*slopeSum/average, GetLocalSendRate(),  rtt );
+			RAKNET_DEBUG_PRINTF("Ping stable. slope=%f%%. Rate=%f MBPS. Rtt=%i\n", 100.0*slopeSum/average, GetLocalSendRate(),  rtt );
 
 			// No packetloss over time threshhold, and rtt decreased, so send faster
 			lastRttOnIncreaseSendRate=rtt;

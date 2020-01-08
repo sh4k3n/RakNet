@@ -38,9 +38,9 @@ namespace rnet
         void Reset();
         bool Input(RemoteSystem& remoteSystem, const char *buffer, unsigned int length);
         uint32_t Receive(unsigned char**data);
-        bool Send(RemoteSystem& remoteSystem, char *data, uint32_t numberOfBytesToSend, 
+        bool Send(TimeMS time, RemoteSystem& remoteSystem, char *data, uint32_t numberOfBytesToSend,
             unsigned char orderingChannel);
-        void Update(const RemoteSystem& remoteSystem, TimeMS time);
+        void Update(const RemoteSystem& remoteSystem);
         bool IsOutgoingDataWaiting(void);
         bool AreAcksWaiting(void);
 
@@ -52,7 +52,6 @@ namespace rnet
         std::unordered_map<uint32_t, uint8_t> myIdToChannel;
         std::array<BigDataBuffer, NUMBER_OF_ORDERED_STREAMS> myBigDataBuffers;
         std::array<bool, NUMBER_OF_ORDERED_STREAMS> myIsBigDataActive;
-        
     };
 
 }

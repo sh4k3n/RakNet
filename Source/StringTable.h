@@ -21,6 +21,8 @@
 #include "Export.h"
 #include "RakMemoryOverride.h"
 
+#include <atomic>
+
 /// Forward declaration
 namespace RakNet
 {
@@ -94,7 +96,6 @@ namespace RakNet
 
 		/// Singleton instance
 		static StringTable *instance;
-		static int referenceCount;
 
 		DataStructures::OrderedList<char *, StrAndBool, StrAndBoolComp> orderedStringList;
 	};

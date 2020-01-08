@@ -25,13 +25,23 @@
 #include "RakNetSmartPtr.h"
 #include "RakNetSocket2.h"
 
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+namespace rnet
+{
+	struct Stats;
+}
+#endif
 namespace RakNet
 {
 // Forward declarations
 class BitStream;
 class PluginInterface2;
 struct RPCMap;
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+using RakNetStatistics = rnet::Stats;
+#else
 struct RakNetStatistics;
+#endif
 struct RakNetBandwidth;
 class RouterInterface;
 class NetworkIDManager;

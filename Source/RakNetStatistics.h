@@ -21,6 +21,13 @@
 #include "Export.h"
 #include "RakNetTypes.h"
 
+#if RAKNET_ARQ == RAKNET_ARQ_KCP
+#include <rnet/RNetStats.h>
+namespace RakNet
+{
+	using RakNetStatistics = rnet::Stats;
+}
+#else
 namespace RakNet
 {
 
@@ -130,4 +137,5 @@ void RAK_DLL_EXPORT StatisticsToString( RakNetStatistics *s, char *buffer, int v
 
 } // namespace RakNet
 
+#endif
 #endif

@@ -42,7 +42,7 @@ else use congestion avoidance
 #ifndef __CONGESTION_CONTROL_SLIDING_WINDOW_H
 #define __CONGESTION_CONTROL_SLIDING_WINDOW_H
 
-#include "NativeTypes.h"
+#include <stdint.h>
 #include "RakNetTime.h"
 #include "RakNetTypes.h"
 #include "DS_Queue.h"

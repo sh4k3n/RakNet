@@ -19,6 +19,7 @@ using namespace DataStructures;
 
 #ifdef _MSC_VER
 #pragma warning( push )
+#pragma warning(disable:4996)
 #endif
 
 void ExtendRows(Table::Row* input, int index)
@@ -191,7 +192,7 @@ Table::Cell::Cell(double numericValue, char *charValue, void *ptr, ColumnType ty
 {
 	SetByType(numericValue,charValue,ptr,type);
 }
-void Table::Cell::SetByType(double numericValue, char *charValue, void *ptr, ColumnType type)
+void Table::Cell::SetByType(double numericValue, char *charValue, void *inPtr, ColumnType type)
 {
 	isEmpty=true;
 	if (type==NUMERIC)
@@ -208,11 +209,11 @@ void Table::Cell::SetByType(double numericValue, char *charValue, void *ptr, Col
 	}
 	else if (type==POINTER)
 	{
-		SetPtr(ptr);
+		SetPtr(inPtr);
 	}
 	else
 	{
-		ptr=(void*) charValue;
+		inPtr =(void*) charValue;
 	}
 }
 Table::ColumnType Table::Cell::EstimateColumnType(void) const

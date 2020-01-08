@@ -2,6 +2,7 @@
 #include "../DependentExtensions/catch2/single_include/catch2/catch.hpp"
 
 #include "TestEnv.h"
+#include "TestHelpers.h"
 using namespace RakNet;
 
 // Tests to measure and benchmark latency on packet loss conditions.
@@ -17,6 +18,10 @@ uint32_t SendBigData(size_t DataSize, size_t NumPackets, unsigned short minPing,
     size_t totalTime = 0;
     size_t totalSendBytes = 0;
     size_t totalRecvBytes = 0;
+
+
+	RakNetStatistics rssSender;
+	RakNetStatistics rssReceiver;
 
     env.Setup(2, minPing, maxPing, packetLoss);
 
@@ -64,7 +69,11 @@ uint32_t SendBigData(size_t DataSize, size_t NumPackets, unsigned short minPing,
 
                     totalReceived++;
                     totalRecvBytes += packet->length;
-                    printf("TotalRecv=%lu/%lu\n", totalRecvBytes, 2 * DataSize * NumPackets);
+
+					char text[4096];
+					env.peers[i]->GetStatistics(env.peers[i]->GetSystemAddressFromIndex(0), &rssSender);
+					StatisticsToString(&rssSender, text, 2);
+                    printf("Stats: %s", text);
                 }
                 else
                 {

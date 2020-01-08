@@ -12,7 +12,7 @@
 /// \brief \b Compresses/Decompresses ASCII strings and writes/reads them to BitStream class instances.  You can use this to easily serialize and deserialize your own strings.
 ///
 
-
+#include <atomic>
 
 #ifndef __STRING_COMPRESSOR_H
 #define __STRING_COMPRESSOR_H
@@ -104,8 +104,7 @@ private:
 	
 	/// Pointer to the huffman encoding trees.
 	DataStructures::Map<int, HuffmanEncodingTree *> huffmanEncodingTrees;
-	
-	static int referenceCount;
+
 };
 
 } // namespace RakNet

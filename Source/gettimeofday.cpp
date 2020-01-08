@@ -16,6 +16,12 @@
 
 #include "WindowsIncludes.h"
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+#endif
+
+
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
   #define DELTA_EPOCH_IN_MICROSECS  11644473600000000Ui64
 #else

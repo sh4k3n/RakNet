@@ -17,7 +17,7 @@
 #include <stdio.h> // sprintf
 #include "GetTime.h"
 #include "RakString.h"
-
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 using namespace RakNet;
 
 // Verbosity level currently supports 0 (low), 1 (medium), 2 (high)
@@ -160,3 +160,4 @@ void RAK_DLL_EXPORT RakNet::StatisticsToString( RakNetStatistics *s, char *buffe
 		}
 	}
 }
+#endif

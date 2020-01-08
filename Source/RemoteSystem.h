@@ -3,6 +3,7 @@
 #include <rnet/NetworkSimulator.h>
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
 #include <rnet/relay/ReliableChannels.h>
+#include <rnet/RNetStats.h>
 #else
 #include "ReliabilityLayer.h"
 #endif
@@ -24,8 +25,11 @@ namespace RakNet
         SystemAddress systemAddress;  /// Their external IP on the internet
         SystemAddress myExternalSystemAddress;  /// Your external IP on the internet, from their perspective
         SystemAddress theirInternalSystemAddress[MAXIMUM_NUMBER_OF_INTERNAL_IDS];  /// Their internal IP, behind the LAN
+		RakNet::TimeMS lastReliableSend; /// When did the last reliable send occur.  Reliable sends must occur at least once every timeoutTime/2 units to notice disconnects
+		RakNet::TimeMS lastUpdate; // TODO: Currently all systems have same update time, but in future some systems could have lower update rate.
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
         rnet::ReliableChannels reliableChannels;
+		rnet::DataMetrics metrics;
 #else
         ReliabilityLayer reliabilityLayer;  /// The reliability layer associated with this player
 #endif
@@ -34,7 +38,6 @@ namespace RakNet
         RakNet::Time pingAndClockDifferentialWriteIndex;  /// The index we are writing into the pingAndClockDifferential circular buffer
         unsigned short lowestPing; ///The lowest ping value encountered
         RakNet::Time nextPingTime;  /// When to next ping this player
-        RakNet::TimeMS lastReliableSend; /// When did the last reliable send occur.  Reliable sends must occur at least once every timeoutTime/2 units to notice disconnects
         RakNet::TimeMS connectionTime; /// connection time, if active.
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
         RakNet::TimeMS timeLastDatagramArrived;

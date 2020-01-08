@@ -47,7 +47,6 @@ TEST_CASE("ManyClientsOneServerNonBlockingTest")
 
 int ManyClientsOneServerNonBlockingTest::RunTest(DataStructures::List<RakString> params,bool isVerbose,bool noPauses)
 {
-
 	const int clientNum= 256;
 
 	RakPeerInterface *clientList[clientNum];//A list of clients

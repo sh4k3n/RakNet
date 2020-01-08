@@ -17,6 +17,11 @@
 #include <time.h>
 #include "LinuxStrings.h"
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+#endif
+
 char * EpochTimeToString(long long time)
 {
 	static int textIndex=0;

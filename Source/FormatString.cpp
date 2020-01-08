@@ -14,6 +14,11 @@
 #include <stdarg.h>
 #include "LinuxStrings.h"
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+#endif
+
 char * FormatString(const char *format, ...)
 {
 	static int textIndex=0;

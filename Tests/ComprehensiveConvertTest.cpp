@@ -9,6 +9,7 @@
  */
 
 #include "ComprehensiveConvertTest.h"
+#include "TestHelpers.h"
 
 /*
 Description: Does a little bit of everything forever. This is an internal sample just to see if RakNet crashes or leaks memory over a long period of time.

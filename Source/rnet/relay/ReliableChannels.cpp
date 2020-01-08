@@ -15,6 +15,7 @@ namespace rnet
     {
         RemoteSystem& remoteSystem = *static_cast<RemoteSystem*>(user);
         RakNet::BitStream bitStream((unsigned char*)buf, len, false);
+		remoteSystem.metrics.OnSent(remoteSystem.lastUpdate, rnet::PacketType::Raw, len + UDP_HEADER_SIZE);
         rnet::socket_layer::SendTo(*remoteSystem.rakNetSocket, bitStream, remoteSystem.systemAddress);
         return 0;
     }
@@ -135,7 +136,7 @@ namespace rnet
         return 0;
     }
 
-    bool ReliableChannels::Send(
+    bool ReliableChannels::Send(TimeMS time,
         RemoteSystem& remoteSystem, char* data, uint32_t numberOfBytesToSend, unsigned char orderingChannel)
     {
         RNetAssert(orderingChannel < NUMBER_OF_ORDERED_STREAMS);
@@ -145,6 +146,7 @@ namespace rnet
         int result = ikcp_send(stream, data, numberOfBytesToSend);
         if (result >= 0)
         {
+			remoteSystem.metrics.OnSent(time, rnet::PacketType::UserReliable, numberOfBytesToSend);
             return true;
         }
 
@@ -167,10 +169,12 @@ namespace rnet
         auto pos = 0;
         while(pos < numberOfBytesToSend - (SegmentSize))
         {
+			remoteSystem.metrics.OnSent(time, rnet::PacketType::UserReliable, SegmentSize);
             result = ikcp_send(stream, &data[pos], SegmentSize);
             RNetAssert(result >= 0);
             pos += SegmentSize;
         }
+		remoteSystem.metrics.OnSent(time, rnet::PacketType::UserReliable, numberOfBytesToSend - pos);
         result = ikcp_send(stream, &data[pos], numberOfBytesToSend - pos);
         RNetAssert(result >= 0);
         return true;
@@ -200,7 +204,7 @@ namespace rnet
         return myOrderedChannels[iter->second];
     }
 
-    void ReliableChannels::Update(const RemoteSystem& remoteSystem, TimeMS time)
+    void ReliableChannels::Update(const RemoteSystem& remoteSystem)
     {
         for (size_t i = 0; i < myOrderedChannels.size(); ++i)        
         {
@@ -231,7 +235,7 @@ namespace rnet
             {
                 ikcp_wndsize(iter, wnd, wnd);
             }
-            ikcp_update(iter, time);
+            ikcp_update(iter, remoteSystem.lastUpdate);
         }
     }
 

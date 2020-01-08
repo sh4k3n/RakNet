@@ -31,23 +31,25 @@ namespace DataStructures
 	class RAK_DLL_EXPORT Queue
 	{
 	public:
+		using TSize = uint32_t;
+
 		Queue();
 		~Queue();
 		Queue( Queue& original_copy );
 		bool operator= ( const Queue& original_copy );
 		void Push( const queue_type& input, const char *file, unsigned int line );
 		void PushAtHead( const queue_type& input, unsigned index, const char *file, unsigned int line );
-		queue_type& operator[] ( unsigned int position ) const; // Not a normal thing you do with a queue but can be used for efficiency
-		void RemoveAtIndex( unsigned int position ); // Not a normal thing you do with a queue but can be used for efficiency
+		queue_type& operator[] (TSize position ) const; // Not a normal thing you do with a queue but can be used for efficiency
+		void RemoveAtIndex(TSize position ); // Not a normal thing you do with a queue but can be used for efficiency
 		inline queue_type Peek( void ) const;
 		inline queue_type PeekTail( void ) const;
 		inline queue_type Pop( void );
 		inline queue_type PopTail( void );
 		// Debug: Set pointer to 0, for memory leak detection
 		inline queue_type PopDeref( void );
-		inline unsigned int Size( void ) const;
+		inline TSize Size( void ) const;
 		inline bool IsEmpty(void) const;
-		inline unsigned int AllocationSize( void ) const;
+		inline TSize AllocationSize( void ) const;
 		inline void Clear( const char *file, unsigned int line );
 		void Compress( const char *file, unsigned int line );
 		bool Find ( const queue_type& q );
@@ -55,14 +57,14 @@ namespace DataStructures
 
 	private:
 		queue_type* array;
-		unsigned int head;  // Array index for the head of the queue
-		unsigned int tail; // Array index for the tail of the queue
-		unsigned int allocation_size;
+		TSize head;  // Array index for the head of the queue
+		TSize tail; // Array index for the tail of the queue
+		TSize allocation_size;
 	};
 
 
 	template <class queue_type>
-		inline unsigned int Queue<queue_type>::Size( void ) const
+		inline typename Queue<queue_type>::TSize Queue<queue_type>::Size( void ) const
 	{
 		if ( head <= tail )
 			return tail -head;
@@ -77,7 +79,7 @@ namespace DataStructures
 	}
 
 	template <class queue_type>
-	inline unsigned int Queue<queue_type>::AllocationSize( void ) const
+	inline typename Queue<queue_type>::TSize Queue<queue_type>::AllocationSize( void ) const
 	{
 		return allocation_size;
 	}
@@ -103,11 +105,7 @@ namespace DataStructures
 	template <class queue_type>
 		inline queue_type Queue<queue_type>::Pop( void )
 	{
-#ifdef _DEBUG
 		RakAssert( head != tail);
-#endif
-		//head=(head+1) % allocation_size;
-
 		if ( ++head == allocation_size )
 			head = 0;
 
@@ -120,9 +118,7 @@ namespace DataStructures
 	template <class queue_type>
 	inline queue_type Queue<queue_type>::PopTail( void )
 	{
-#ifdef _DEBUG
 		RakAssert( head != tail );
-#endif
 		if (tail!=0)
 		{
 			--tail;
@@ -250,7 +246,7 @@ namespace DataStructures
 			if (new_array==0)
 				return;
 
-			for ( unsigned int counter = 0; counter < allocation_size; ++counter )
+			for (TSize counter = 0; counter < allocation_size; ++counter )
 				new_array[ counter ] = array[ ( head + counter ) % ( allocation_size ) ];
 
 			head = 0;
@@ -281,7 +277,7 @@ namespace DataStructures
 		{
 			array = RakNet::OP_NEW_ARRAY<queue_type >( original_copy.Size() + 1 , _FILE_AND_LINE_ );
 
-			for ( unsigned int counter = 0; counter < original_copy.Size(); ++counter )
+			for (TSize counter = 0; counter < original_copy.Size(); ++counter )
 				array[ counter ] = original_copy.array[ ( original_copy.head + counter ) % ( original_copy.allocation_size ) ];
 
 			head = 0;
@@ -310,7 +306,7 @@ namespace DataStructures
 		{
 			array = RakNet::OP_NEW_ARRAY<queue_type >( original_copy.Size() + 1 , _FILE_AND_LINE_ );
 
-			for ( unsigned int counter = 0; counter < original_copy.Size(); ++counter )
+			for (TSize counter = 0; counter < original_copy.Size(); ++counter )
 				array[ counter ] = original_copy.array[ ( original_copy.head + counter ) % ( original_copy.allocation_size ) ];
 
 			head = 0;
@@ -343,7 +339,7 @@ namespace DataStructures
 	void Queue<queue_type>::Compress ( const char *file, unsigned int line )
 	{
 		queue_type* new_array;
-		unsigned int newAllocationSize;
+		TSize newAllocationSize;
 		if (allocation_size==0)
 			return;
 
@@ -353,7 +349,7 @@ namespace DataStructures
 
 		new_array = RakNet::OP_NEW_ARRAY<queue_type >(newAllocationSize, file, line );
 
-		for (unsigned int counter=0; counter < Size(); ++counter)
+		for (TSize counter=0; counter < Size(); ++counter)
 			new_array[counter] = array[(head + counter)%(allocation_size)];
 
 		tail=Size();
@@ -371,7 +367,7 @@ namespace DataStructures
 		if ( allocation_size == 0 )
 			return false;
 
-		unsigned int counter = head;
+		TSize counter = head;
 
 		while ( counter != tail )
 		{
@@ -398,7 +394,7 @@ namespace DataStructures
 	}
 
 	template <class queue_type>
-		inline queue_type& Queue<queue_type>::operator[] ( unsigned int position ) const
+		inline queue_type& Queue<queue_type>::operator[] (TSize position ) const
 	{
 #ifdef _DEBUG
 		RakAssert( position < Size() );
@@ -412,7 +408,7 @@ namespace DataStructures
 	}
 
 	template <class queue_type>
-	void Queue<queue_type>::RemoveAtIndex( unsigned int position )
+	void Queue<queue_type>::RemoveAtIndex(TSize position )
 	{
 #ifdef _DEBUG
 		RakAssert( position < Size() );
@@ -422,9 +418,9 @@ namespace DataStructures
 		if ( head == tail || position >= Size() )
 			return ;
 
-		unsigned int index;
+		TSize index;
 
-		unsigned int next;
+		TSize next;
 
 		//index  = (head + position) % allocation_size;
 		if ( head + position >= allocation_size )

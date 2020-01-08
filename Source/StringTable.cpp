@@ -16,8 +16,20 @@
 #include "StringCompressor.h"
 using namespace RakNet;
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+#endif
+
 StringTable* StringTable::instance=0;
-int StringTable::referenceCount=0;
+class Counter
+{
+public:
+	Counter() : count(0) {}
+	std::atomic<int> count;
+};
+
+static Counter reference;
 
 
 int RakNet::StrAndBoolComp( char *const &key, const StrAndBool &data )
@@ -42,22 +54,18 @@ StringTable::~StringTable()
 
 void StringTable::AddReference(void)
 {
-	if (++referenceCount==1)
+	if (++reference.count==1)
 	{
 		instance = RakNet::OP_NEW<StringTable>( _FILE_AND_LINE_ );
 	}
 }
 void StringTable::RemoveReference(void)
 {
-	RakAssert(referenceCount > 0);
-
-	if (referenceCount > 0)
+	RakAssert(reference.count > 0);
+	if (--reference.count ==0)
 	{
-		if (--referenceCount==0)
-		{
-			RakNet::OP_DELETE(instance, _FILE_AND_LINE_);
-			instance=0;
-		}
+		RakNet::OP_DELETE(instance, _FILE_AND_LINE_);
+		instance=0;
 	}
 }
 

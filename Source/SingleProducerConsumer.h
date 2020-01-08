@@ -104,9 +104,7 @@ namespace DataStructures
 		writePointer=readPointer;
 		readPointer->next = RakNet::OP_NEW<DataPlusPtr>( _FILE_AND_LINE_ );
 		int listSize;
-#ifdef _DEBUG
-		RakAssert(MINIMUM_LIST_SIZE>=3);
-#endif
+		static_assert(MINIMUM_LIST_SIZE>=3, "Invalid list size");
 		for (listSize=2; listSize < MINIMUM_LIST_SIZE; listSize++)
 		{
 			readPointer=readPointer->next;

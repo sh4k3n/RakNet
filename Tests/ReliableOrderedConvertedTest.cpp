@@ -9,6 +9,7 @@
  */
 
 #include "ReliableOrderedConvertedTest.h"
+#include "TestHelpers.h"
 
 FILE *fp;
 int memoryUsage=0;

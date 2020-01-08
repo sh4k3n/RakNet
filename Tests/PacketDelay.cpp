@@ -153,7 +153,7 @@ TEST_CASE("PacketDelay150msHeavyPacketLoss")
 TEST_CASE("PacketDelay250msLightPacketLoss")
 {
     unsigned short ping = 250;
-    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.01f) < 400.0f);
+    REQUIRE(MeasurePacketDelay(TestLength, ping, ping + (ping / 10), 0.01f) < 450.0f);
 }
 
 TEST_CASE("PacketDelayVarying")

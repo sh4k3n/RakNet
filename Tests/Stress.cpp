@@ -11,6 +11,7 @@
 #include "../DependentExtensions/catch2/single_include/catch2/catch.hpp"
 
 #include "RakPeerInterface.h"
+#include "TestHelpers.h"
 
 #include "BitStream.h"
 #include <stdlib.h> // For atoi

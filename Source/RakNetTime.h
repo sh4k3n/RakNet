@@ -11,33 +11,35 @@
 
 #include "NativeTypes.h"
 #include "RakNetDefines.h"
+#include <rnet/RNetTime.h>
 
 namespace RakNet {
 
-// Define __GET_TIME_64BIT if you want to use large types for GetTime (takes more bandwidth when you transmit time though!)
-// You would want to do this if your system is going to run long enough to overflow the millisecond counter (over a month)
-#if __GET_TIME_64BIT==1
-typedef uint64_t Time;
-typedef uint32_t TimeMS;
-typedef uint64_t TimeUS;
-#else
-typedef uint32_t Time;
-typedef uint32_t TimeMS;
-typedef uint64_t TimeUS;
-#endif
+	using TimeMS = rnet::TimeMS;
+	using Time = rnet::Time;
+	using TimeUS = rnet::TimeUS;	
+	using TimeDeltaMS = rnet::TimeDeltaMS;
+	using TimeDeltaUS = rnet::TimeDeltaUS;
 
-#if RAKNET_ARQ == RAKNET_ARQ_KCP
-#define CC_TIME_TYPE_BYTES 4
-#else
-/// Set to 4 if you are using the iPod Touch TG. See http://www.jenkinssoftware.com/forum/index.php?topic=2717.0
-#define CC_TIME_TYPE_BYTES 8
-#endif
+	constexpr TimeDeltaMS DeltaTime(TimeMS a, TimeMS b)
+	{
+		return rnet::DeltaTime(a, b);
+	}
 
-#if CC_TIME_TYPE_BYTES==8
-typedef RakNet::TimeUS CCTimeType;
-#else
-typedef RakNet::TimeMS CCTimeType;
-#endif
+	constexpr bool IsTimeInRange(TimeMS a, TimeMS b, TimeDeltaMS range)
+	{
+		return rnet::IsTimeInRange(a, b, range);
+	}
+
+	constexpr TimeDeltaUS DeltaTime(TimeUS a, TimeUS b)
+	{
+		return rnet::DeltaTime(a, b);
+	}
+
+	template<typename TTime = TimeMS>
+	/*constexpr*/ TTime TimeSince(TTime a, TTime b)
+	{
+		return rnet::TimeSince(a, b);
+	}
 
 } // namespace RakNet
-
