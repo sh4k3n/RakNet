@@ -19,6 +19,7 @@ x64/
 *.opendb
 *.vcxproj
 *.vcxproj.filters
+generated/
 
 # Xcode and OS X 
 build/
