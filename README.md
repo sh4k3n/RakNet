@@ -35,7 +35,7 @@ See Help\swigtutorial.html
 
 How to setup
 -----------------------------------------
-Create a work directy and from the work directory call "cmake [RakNet root directory]"
+Run cmake from your work directory, e.g. "cmake [RakNet root directory]"
 
 
 
