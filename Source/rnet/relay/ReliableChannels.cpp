@@ -112,7 +112,7 @@ namespace rnet
                 else
                 {
                     BigDataBuffer& buffer = myBigDataBuffers[myReceiveProcessIndex];
-                    RNetAssert(nextSize <= buffer.myTotalSize - buffer.myUsedSize, "Invalid size");
+                    RNetAssert(nextSize <= int(buffer.myTotalSize - buffer.myUsedSize), "Invalid size");
                     {
                         int res = ikcp_recv(channel, &buffer.myBuffer[buffer.myUsedSize], nextSize);
                         RNetAssert(res >= 0);
@@ -166,7 +166,7 @@ namespace rnet
             RNetAssert(result >= 0);
         }
         auto splits = (numberOfBytesToSend + (numberOfBytesToSend % (SegmentSize))) / (SegmentSize);
-        auto pos = 0;
+        uint32_t pos = 0;
         while(pos < numberOfBytesToSend - (SegmentSize))
         {
 			remoteSystem.metrics.OnSent(time, rnet::PacketType::UserReliable, SegmentSize);

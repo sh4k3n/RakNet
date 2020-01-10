@@ -121,18 +121,18 @@ namespace rnet
 			return PerSecond(rnet::PacketType::Raw, rnet::DataType::Bytes, rnet::DirectionType::Received);
 		}
 
-		double RawBytesSent() const
+		uint64_t RawBytesSent() const
 		{
 			return Total(rnet::PacketType::Raw, rnet::DataType::Bytes, rnet::DirectionType::Sent);
 		}
 
-		double UserBytesSent() const
+		uint64_t UserBytesSent() const
 		{
 			return Total(rnet::PacketType::UserReliable, rnet::DataType::Bytes, rnet::DirectionType::Sent) +
 				Total(rnet::PacketType::UserUnreliable, rnet::DataType::Bytes, rnet::DirectionType::Sent);
 		}	
 
-		double RawBytesReceived() const
+		uint64_t RawBytesReceived() const
 		{
 			return Total(rnet::PacketType::Raw, rnet::DataType::Bytes, rnet::DirectionType::Received);
 		}
@@ -172,6 +172,20 @@ namespace rnet
 		DataMetrics()
 			: refreshSnapshot(false)
 		{}
+
+		void Clear()
+		{
+			for (size_t i = 0; i < static_cast<size_t>(PacketType::Count); ++i)
+			{
+				for (size_t j = 0; j < static_cast<size_t>(DataType::Count); ++j)
+				{
+					for (size_t k = 0; k < static_cast<size_t>(DirectionType::Count); ++k)
+					{
+						counters[i][j][k] = MetricsCounters<>();
+					}
+				}
+			}
+		}
 
 		void OnReceived(TimeMS now, PacketType packetType, size_t byteCount, size_t packetCount = 1)
 		{
@@ -215,7 +229,7 @@ namespace rnet
 				static_cast<size_t>(directionType)].Add(now, byteCount);
 			counters[static_cast<size_t>(packetType)][
 				static_cast<size_t>(DataType::Packets)][
-				static_cast<size_t>(DirectionType::Received)].Add(now, packetCount);
+				static_cast<size_t>(directionType)].Add(now, packetCount);
 		}
 
 		MetricsCounters<> counters[static_cast<size_t>(PacketType::Count)]
