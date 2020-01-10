@@ -664,9 +664,9 @@ protected:
 	//friend RAK_THREAD_DECLARATION(RecvFromLoop);
 	friend RAK_THREAD_DECLARATION(UDTConnect);
 
-	friend bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, bool *isOfflineMessage, RakNet::TimeUS timeRead );
-	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNet::TimeUS timeRead, BitStream &updateBitStream );
-	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, RakNet::TimeUS timeRead, BitStream &updateBitStream );
+	friend bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, bool *isOfflineMessage, RakNet::TimeMS timeRead );
+	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNet::TimeMS timeRead, BitStream &updateBitStream );
+	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, RakNet::TimeMS timeRead, BitStream &updateBitStream );
 
 	int GetIndexFromSystemAddress( const SystemAddress systemAddress, bool calledFromNetworkThread ) const;
 	int GetIndexFromGuid( const RakNetGUID guid );
@@ -698,7 +698,10 @@ protected:
 	/// \param[in] thisIPConnectedRecently	Is this IP connected recently? set to False;
 	/// \param[in] bindingAddress	Address to be binded with the remote system
 	/// \param[in] incomingMTU	MTU for the remote system
-	RemoteSystemStruct * AssignSystemAddressToRemoteSystemList( const SystemAddress systemAddress, RemoteSystemStruct::ConnectMode connectionMode, RakNetSocket2* incomingRakNetSocket, bool *thisIPConnectedRecently, SystemAddress bindingAddress, int incomingMTU, RakNetGUID guid, bool useSecurity );
+	RemoteSystemStruct * AssignSystemAddressToRemoteSystemList( const SystemAddress systemAddress, 
+		RemoteSystemStruct::ConnectMode connectionMode, RakNetSocket2* incomingRakNetSocket, 
+		bool *thisIPConnectedRecently, SystemAddress bindingAddress, int incomingMTU, RakNetGUID guid, bool useSecurity,
+		rnet::TimeMS time);
 	///	\brief Adjust the timestamp of the incoming packet to be relative to this system.
 	/// \param[in] data	Data in the incoming packet.
 	/// \param[in] systemAddress Sender of the incoming packet.
@@ -891,7 +894,7 @@ protected:
 	void CloseConnectionInternal( const AddressOrGUID& systemIdentifier, bool sendDisconnectionNotification, bool performImmediate, unsigned char orderingChannel, PacketPriority disconnectionNotificationPriority );
 	void SendBuffered( const char *data, BitSize_t numberOfBitsToSend, PacketPriority priority, PacketReliability reliability, char orderingChannel, const AddressOrGUID systemIdentifier, bool broadcast, RemoteSystemStruct::ConnectMode connectionMode, uint32_t receipt );
 	void SendBufferedList( const char **data, const int *lengths, const int numParameters, PacketPriority priority, PacketReliability reliability, char orderingChannel, const AddressOrGUID systemIdentifier, bool broadcast, RemoteSystemStruct::ConnectMode connectionMode, uint32_t receipt );
-	bool SendImmediate( char *data, BitSize_t numberOfBitsToSend, PacketPriority priority, PacketReliability reliability, char orderingChannel, const AddressOrGUID systemIdentifier, bool broadcast, bool useCallerDataAllocation, RakNet::TimeUS currentTime, uint32_t receipt );
+	bool SendImmediate( char *data, BitSize_t numberOfBitsToSend, PacketPriority priority, PacketReliability reliability, char orderingChannel, const AddressOrGUID systemIdentifier, bool broadcast, bool useCallerDataAllocation, RakNet::TimeMS currentTime, uint32_t receipt );
 	//bool HandleBufferedRPC(BufferedCommandStruct *bcs, RakNet::TimeMS time);
 	void ClearBufferedCommands(void);
 	void ClearBufferedPackets(void);

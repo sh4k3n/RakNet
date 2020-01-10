@@ -558,7 +558,7 @@ void CloudServer::OnGetRequest(Packet *packet)
 			return;
 	}
 
-	getRequest->requestStartTime=RakNet::GetTime();
+	getRequest->requestStartTime=RakNet::GetTimeMS();
 	getRequest->requestId=nextGetRequestId++;
 
 	// Send request to servers that have this data

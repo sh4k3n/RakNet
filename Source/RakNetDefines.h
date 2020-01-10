@@ -16,14 +16,6 @@
 #include <stdint.h>
 #include "RakNetDefinesOverrides.h"
 
-/// Define __GET_TIME_64BIT to have RakNet::TimeMS use a 64, rather than 32 bit value.  A 32 bit value will overflow after about 5 weeks.
-/// However, this doubles the bandwidth use for sending times, so don't do it unless you have a reason to.
-/// Comment out if you are using the iPod Touch TG. See http://www.jenkinssoftware.com/forum/index.php?topic=2717.0
-/// This must be the same on all systems, or they won't connect
-#ifndef __GET_TIME_64BIT
-#define __GET_TIME_64BIT 1
-#endif
-
 // Define _FILE_AND_LINE_ to "",0 if you want to strip out file and line info for memory tracking from the EXE
 #ifndef _FILE_AND_LINE_
 #define _FILE_AND_LINE_ __FILE__,__LINE__

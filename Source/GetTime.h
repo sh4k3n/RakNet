@@ -17,26 +17,22 @@
 #define __GET_TIME_H
 
 #include "Export.h"
-#include "RakNetTime.h" // For RakNet::TimeMS
+#include "rnet/Clock.h"
 
 namespace RakNet
 {
-	/// Same as GetTimeMS
-	/// Holds the time in either a 32 or 64 bit variable, depending on __GET_TIME_64BIT
-	RakNet::Time RAK_DLL_EXPORT GetTime( void );
+	inline RakNet::Time GetTime(void) { return rnet::SteadyClock::GetTimeMS(); }
 
 	/// Return the time as 32 bit
 	/// \note The maximum delta between returned calls is 1 second - however, RakNet calls this constantly anyway. See NormalizeTime() in the cpp.
-	RakNet::TimeMS RAK_DLL_EXPORT GetTimeMS( void );
+	inline RakNet::TimeMS GetTimeMS( void ) { return rnet::SteadyClock::GetTimeMS(); }
 	
-	/// Return the time as 64 bit
-	/// \note The maximum delta between returned calls is 1 second - however, RakNet calls this constantly anyway. See NormalizeTime() in the cpp.
-	RakNet::TimeUS RAK_DLL_EXPORT GetTimeUS( void );
+	inline RakNet::TimeUS GetTimeUS( void ) { return rnet::SteadyClock::GetTimeUS(); }
 
 	/// a > b?
-	extern RAK_DLL_EXPORT bool GreaterThan(RakNet::Time a, RakNet::Time b);
+	inline bool GreaterThan(RakNet::Time a, RakNet::Time b) { return DeltaTime(a, b) > 0; }
 	/// a < b?
-	extern RAK_DLL_EXPORT bool LessThan(RakNet::Time a, RakNet::Time b);
+	inline bool LessThan(RakNet::Time a, RakNet::Time b) { return DeltaTime(a, b) < 0; }
 }
 
 #endif

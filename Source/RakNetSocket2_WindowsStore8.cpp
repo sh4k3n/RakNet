@@ -186,7 +186,7 @@ void ListenerContext::OnMessage(Windows::Networking::Sockets::DatagramSocket^ so
 	rs2.FromWideChar(eventArguments->RemotePort->Data());
 	strcpy(portStr, rs2.C_String());
 	recvFromStruct->systemAddress.SetPortHostOrder(atoi(portStr));
-	recvFromStruct->timeRead=RakNet::GetTimeUS();
+	recvFromStruct->timeRead=RakNet::GetTimeMS();
 	recvFromStruct->socket = rns2;
 	eventHandler->OnRNS2Recv(recvFromStruct);
 

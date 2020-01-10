@@ -17,20 +17,9 @@ namespace rnet
 		Sync,
 		Precise
 	};
-
-	// Define __GET_TIME_64BIT if you want to use large types for GetTime (takes more bandwidth when you transmit time though!)
-	// You would want to do this if your system is going to run long enough to overflow the millisecond counter (over a month)
-#if __GET_TIME_64BIT==1
-	// NOTE: Check does RakNet work correcty if type of Time and TimMS are different
-	using Time = uint64_t;
-	using TimeMS = uint32_t ;
-	using TimeDeltaMS = int32_t;
-	using TimeUS = uint64_t;
-#else
 	using Time = uint32_t;
 	using TimeMS = uint32_t;
-	using TimeUS = uint32_t;
-#endif
+	using TimeUS = uint64_t;
 
 	using TimeDeltaMS = std::make_signed<TimeMS>::type;
 	using TimeDeltaUS = std::make_signed<TimeUS>::type;

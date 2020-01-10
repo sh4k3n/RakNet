@@ -412,7 +412,7 @@ void RNS2_Berkley::RecvFromBlockingIPV4And6(RNS2RecvStruct *recvFromStruct)
 
 	if (recvFromStruct->bytesRead<=0)
 		return;
-	recvFromStruct->timeRead=RakNet::GetTimeUS();
+	recvFromStruct->timeRead=RakNet::GetTimeMS();
 
 
 
@@ -519,7 +519,7 @@ void RNS2_Berkley::RecvFromBlockingIPV4(RNS2RecvStruct *recvFromStruct)
 
 		return;
 	}
-	recvFromStruct->timeRead=RakNet::GetTimeUS();
+	recvFromStruct->timeRead=RakNet::GetTimeMS();
 
 
 

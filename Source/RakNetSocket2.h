@@ -81,7 +81,7 @@ struct RNS2RecvStruct
 
 	int bytesRead;
 	SystemAddress systemAddress;
-	RakNet::TimeUS timeRead;
+	RakNet::TimeMS timeRead;
 	RakNetSocket2 *socket;
 };
 

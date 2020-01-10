@@ -123,16 +123,16 @@ void DynDNS::Update(void)
 			connectPhase = CP_WAITING_FOR_DYNDNS_RESPONSE;
 			tcp->Send(getString.C_String(), (unsigned int) getString.GetLength(), serverAddress, false);
 		}
-		phaseTimeout=RakNet::GetTime()+1000;
+		phaseTimeout=RakNet::GetTimeMS()+1000;
 	}
 
-	if (connectPhase==CP_WAITING_FOR_CHECKIP_RESPONSE && RakNet::GetTime()>phaseTimeout)
+	if (connectPhase==CP_WAITING_FOR_CHECKIP_RESPONSE && RakNet::GetTimeMS()>phaseTimeout)
 	{
 		connectPhase = CP_CONNECTING_TO_DYNDNS;
 		tcp->CloseConnection(checkIpAddress);
 		tcp->Connect("members.dyndns.org", 80, false);
 	}
-	else if (connectPhase==CP_WAITING_FOR_DYNDNS_RESPONSE && RakNet::GetTime()>phaseTimeout)
+	else if (connectPhase==CP_WAITING_FOR_DYNDNS_RESPONSE && RakNet::GetTimeMS()>phaseTimeout)
 	{
 		SetCompleted(RC_DYNDNS_TIMEOUT, "DynDNS did not respond");
 		return;

@@ -94,7 +94,7 @@ uint32_t SendBigData(size_t DataSize, size_t NumPackets, unsigned short minPing,
             }
         }
         RakSleep(0);
-    } while (totalRecvBytes != 2*DataSize * NumPackets);
+	} while (totalRecvBytes != 2 * DataSize * NumPackets);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()) / 1000;
     printf("Elapsed=%f\n", elapsed);

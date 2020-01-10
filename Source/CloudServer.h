@@ -280,7 +280,7 @@ protected:
 		CloudQueryWithAddresses cloudQueryWithAddresses;
 
 		// When request started. If takes too long for a response from another system, can abort remaining systems
-		RakNet::Time requestStartTime;
+		RakNet::TimeMS requestStartTime;
 
 		// Assigned by server that gets the request to identify response. See nextGetRequestId
 		uint32_t requestId;
