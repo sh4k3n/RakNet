@@ -21,6 +21,10 @@
 #include "SocketDefines.h"
 #include "RakNetSocket2.h"
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+#endif
 
 #if   defined(_WIN32)
 // extern __int64 _strtoui64(const char*, char**, int); // needed for Code::Blocks. Does not compile on Visual Studio 2010
@@ -747,66 +751,4 @@ void SystemAddress::CopyPort( const SystemAddress& right )
 {
 	address.addr4.sin_port=right.address.addr4.sin_port;
 	debugPort=right.debugPort;
-}
-RakNetGUID::RakNetGUID()
-{
-	systemIndex=(SystemIndex)-1;
-	*this=UNASSIGNED_RAKNET_GUID;
-}
-bool RakNetGUID::operator==( const RakNetGUID& right ) const
-{
-	return g==right.g;
-}
-bool RakNetGUID::operator!=( const RakNetGUID& right ) const
-{
-	return g!=right.g;
-}
-bool RakNetGUID::operator > ( const RakNetGUID& right ) const
-{
-	return g > right.g;
-}
-bool RakNetGUID::operator < ( const RakNetGUID& right ) const
-{
-	return g < right.g;
-}
-const char *RakNetGUID::ToString(void) const
-{
-	static unsigned char strIndex=0;
-	static char str[8][64];
-
-	unsigned char lastStrIndex=strIndex;
-	strIndex++;
-	ToString(str[lastStrIndex&7]);
-	return (char*) str[lastStrIndex&7];
-}
-void RakNetGUID::ToString(char *dest) const
-{
-	if (*this==UNASSIGNED_RAKNET_GUID)
-		strcpy(dest, "UNASSIGNED_RAKNET_GUID");
-	else
-		//sprintf(dest, "%u.%u.%u.%u.%u.%u", g[0], g[1], g[2], g[3], g[4], g[5]);
-		sprintf(dest, "%" PRINTF_64_BIT_MODIFIER "u", (long long unsigned int) g);
-		// sprintf(dest, "%u.%u.%u.%u.%u.%u", g[0], g[1], g[2], g[3], g[4], g[5]);
-}
-bool RakNetGUID::FromString(const char *source)
-{
-	if (source==0)
-		return false;
-
-
-
-#if   defined(WIN32)
-	g=_strtoui64(source, NULL, 10);
-
-
-#else
-	// Changed from g=strtoull(source,0,10); for android
-	g=strtoull(source, (char **)NULL, 10);
-#endif
-	return true;
-
-}
-unsigned long RakNetGUID::ToUint32( const RakNetGUID &g )
-{
-	return ((unsigned long) (g.g >> 32)) ^ ((unsigned long) (g.g & 0xFFFFFFFF));
 }

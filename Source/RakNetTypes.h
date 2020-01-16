@@ -28,9 +28,13 @@
 #include "XBox360Includes.h"
 #include "SocketIncludes.h"
 
+#include <rnet/RNetGUID.h>
 
-
-
+namespace RakNet
+{
+	using SystemIndex = rnet::SystemIndex;
+	using RakNetGUID = rnet::GUID;
+}
 
 namespace RakNet {
 /// Forward declarations
@@ -90,7 +94,6 @@ enum ConnectionState
 
 /// \sa NetworkIDObject.h
 typedef unsigned char UniqueIDType;
-typedef unsigned short SystemIndex;
 typedef unsigned char RPCIndex;
 const int MAX_RPC_MAP_SIZE=((RPCIndex)-1)-1;
 const int UNDEFINED_RPC_INDEX=((RPCIndex)-1);
@@ -314,45 +317,7 @@ struct RAK_DLL_EXPORT SystemAddress
 #endif
 };
 
-/// Uniquely identifies an instance of RakPeer. Use RakPeer::GetGuidFromSystemAddress() and RakPeer::GetSystemAddressFromGuid() to go between SystemAddress and RakNetGUID
-/// Use RakPeer::GetGuidFromSystemAddress(UNASSIGNED_SYSTEM_ADDRESS) to get your own GUID
-struct RAK_DLL_EXPORT RakNetGUID
-{
-	RakNetGUID();
-	explicit RakNetGUID(uint64_t _g) {g=_g; systemIndex=(SystemIndex)-1;}
-//	uint32_t g[6];
-	uint64_t g;
 
-	// Return the GUID as a string
-	// Returns a static string
-	// NOT THREADSAFE
-	const char *ToString(void) const;
-
-	// Return the GUID as a string
-	// dest must be large enough to hold the output
-	// THREADSAFE
-	void ToString(char *dest) const;
-
-	bool FromString(const char *source);
-
-	static unsigned long ToUint32( const RakNetGUID &g );
-
-	RakNetGUID& operator = ( const RakNetGUID& input )
-	{
-		g=input.g;
-		systemIndex=input.systemIndex;
-		return *this;
-	}
-
-	// Used internally for fast lookup. Optional (use -1 to do regular lookup). Don't transmit this.
-	SystemIndex systemIndex;
-	static int size() {return (int) sizeof(uint64_t);}
-
-	bool operator==( const RakNetGUID& right ) const;
-	bool operator!=( const RakNetGUID& right ) const;
-	bool operator > ( const RakNetGUID& right ) const;
-	bool operator < ( const RakNetGUID& right ) const;
-};
 
 /// Index of an invalid SystemAddress
 //const SystemAddress UNASSIGNED_SYSTEM_ADDRESS =
@@ -362,6 +327,7 @@ struct RAK_DLL_EXPORT RakNetGUID
 #ifndef SWIG
 const SystemAddress UNASSIGNED_SYSTEM_ADDRESS;
 const RakNetGUID UNASSIGNED_RAKNET_GUID((uint64_t)-1);
+// static const RakNetGUID UNASSIGNED_RAKNET_GUID = RakNetGUID((uint64_t)-1);
 #endif
 //{
 //	{0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF}
