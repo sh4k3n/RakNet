@@ -782,7 +782,6 @@ protected:
 
 	unsigned int bytesSentPerSecond, bytesReceivedPerSecond;
 	// bool isSocketLayerBlocking;
-	// bool continualPing,isRecvfromThreadActive,isMainLoopThreadActive, endThreads, isSocketLayerBlocking;
 	unsigned int validationInteger;
 	SimpleMutex incomingQueueMutex, banListMutex; //,synchronizedMemoryQueueMutex, automaticVariableSynchronizationMutex;
 	//DataStructures::Queue<Packet *> incomingpacketSingleProducerConsumer; //, synchronizedMemorypacketSingleProducerConsumer;
@@ -855,7 +854,15 @@ protected:
 		RakNetSocket2* socket;
 		unsigned short port;
 		uint32_t receipt;
-		enum {BCS_SEND, BCS_CLOSE_CONNECTION, BCS_GET_SOCKET, BCS_CHANGE_SYSTEM_ADDRESS,/* BCS_USE_USER_SOCKET, BCS_REBIND_SOCKET_ADDRESS, BCS_RPC, BCS_RPC_SHIFT,*/ BCS_DO_NOTHING} command;
+		enum 
+		{
+			BCS_SEND, 
+			BCS_CLOSE_CONNECTION, 
+			BCS_GET_SOCKET, 
+			BCS_CHANGE_SYSTEM_ADDRESS,
+			/* BCS_USE_USER_SOCKET, BCS_REBIND_SOCKET_ADDRESS, BCS_RPC, BCS_RPC_SHIFT,*/ 
+			BCS_DO_NOTHING
+		} command;
 	};
 
 	// Single producer single consumer queue using a linked list

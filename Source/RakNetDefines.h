@@ -15,6 +15,7 @@
 // The user should not edit this file
 #include <stdint.h>
 #include "RakNetDefinesOverrides.h"
+#include <RNet/RNet.h>
 
 // Define _FILE_AND_LINE_ to "",0 if you want to strip out file and line info for memory tracking from the EXE
 #ifndef _FILE_AND_LINE_
@@ -77,7 +78,7 @@
 #define RakAssert(x)
 #else
 #if defined(_DEBUG)
-#define RakAssert(x) assert(x);
+#define RakAssert(x) RNetAssert(x, "RakNet");
 #else
 #define RakAssert(x) 
 #endif

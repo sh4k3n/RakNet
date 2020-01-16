@@ -16,6 +16,11 @@
 #include <stdint.h>
 #endif
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+#endif
+
 #undef get16bits
 
 #if (defined(__GNUC__) && defined(__i386__)) || defined(__WATCOMC__) \

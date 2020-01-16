@@ -20,6 +20,11 @@
 #include "DS_Queue.h"
 //#include "GetTime.h"
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+
+#endif
 using namespace RakNet;
 
 STATIC_FACTORY_DEFINITIONS(RPC4,RPC4);

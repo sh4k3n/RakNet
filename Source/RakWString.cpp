@@ -16,6 +16,11 @@
 
 using namespace RakNet;
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable:4996)
+#endif
+
 // From http://www.joelonsoftware.com/articles/Unicode.html
 // Only code points 128 and above are stored using 2, 3, in fact, up to 6 bytes.
 #define MAX_BYTES_PER_UNICODE_CHAR sizeof(wchar_t)
