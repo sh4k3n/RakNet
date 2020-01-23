@@ -3113,7 +3113,7 @@ bool RakPeer::GetStatistics( const unsigned int index, RakNetStatistics *rns )
 	if (index < maximumNumberOfPeers && remoteSystemList[ index ].isActive)
 	{
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-        // RakAssert(false); // TODO
+		remoteSystemList[ index ].metrics.Snapshot(*rns);
 #else
 		remoteSystemList[ index ].reliabilityLayer.GetStatistics(rns);
 #endif
@@ -4581,17 +4581,12 @@ void RakPeer::GenerateGUID(void)
 namespace RakNet {
 
     static void AddPaddingWithRandomData(BitStream& bitStream, size_t count, uint64_t seed)
-    {
-        if (count > bitStream.GetNumberOfBytesUsed())
+    {	
+        for (size_t i = bitStream.GetNumberOfBytesUsed(); i < count; i++)
         {
-            count -= bitStream.GetNumberOfBytesUsed();
-            while (count)
-            {
-                constexpr uint8_t Salt = 0xA5;
-                bitStream.Write(uint8_t(count ^ seed ^ Salt));
-                --count;
-            }
-        }
+			constexpr uint8_t Salt = 0xA5;
+			bitStream.Write(uint8_t(uint8_t(i) ^ seed ^ Salt));
+		}        
     }
 
 bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, bool *isOfflineMessage, RakNet::TimeMS timeRead )
@@ -4905,14 +4900,11 @@ bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data,
 			RakNetGUID guid;
 			bs.Read(guid);
 			SystemAddress bindingAddress;
-			bool b = bs.Read(bindingAddress);
-			RakAssert(b);
+			bool isValid = bs.Read(bindingAddress);
 			uint16_t mtu;
-			b=bs.Read(mtu);
-			RakAssert(b);
+			isValid &=bs.Read(mtu);
 			bool doSecurity=false;
-			b=bs.Read(doSecurity);
-			RakAssert(b);
+			isValid &= bs.Read(doSecurity);
 
 #if LIBCAT_SECURITY==1
 			char answer[cat::EasyHandshake::ANSWER_BYTES];
@@ -4920,193 +4912,198 @@ bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data,
 			if (doSecurity)
 			{
 				CAT_AUDIT_PRINTF("AUDIT: Reading cookie and public key\n");
-				bs.ReadAlignedBytes((unsigned char*) answer, sizeof(answer));
+				isValid &= bs.ReadAlignedBytes((unsigned char*) answer, sizeof(answer));
 			}
 			cat::ClientEasyHandshake *client_handshake=0;
 #endif // LIBCAT_SECURITY
 
-			RakPeer::RequestedConnectionStruct *rcs;
-			bool unlock=true;
-			unsigned i;
-			rakPeer->requestedConnectionQueueMutex.Lock();
-			for (i=0; i <  rakPeer->requestedConnectionQueue.Size(); i++)
+			if (isValid)
 			{
-				rcs=rakPeer->requestedConnectionQueue[i];
-
-
-				if (rcs->systemAddress==systemAddress)
+				RakPeer::RequestedConnectionStruct *rcs;
+				bool unlock=true;
+				rakPeer->requestedConnectionQueueMutex.Lock();
+				for (unsigned i=0, n = rakPeer->requestedConnectionQueue.Size(); i < n; i++)
 				{
+					rcs=rakPeer->requestedConnectionQueue[i];
+
+
+					if (rcs->systemAddress==systemAddress)
+					{
 #if LIBCAT_SECURITY==1
-					CAT_AUDIT_PRINTF("AUDIT: System address matches an entry in the requestedConnectionQueue and doSecurity=%i\n", (int)doSecurity);
-					if (doSecurity)
-					{
-						if (rcs->client_handshake==0)
+						CAT_AUDIT_PRINTF("AUDIT: System address matches an entry in the requestedConnectionQueue and doSecurity=%i\n", (int)doSecurity);
+						if (doSecurity)
 						{
-							CAT_AUDIT_PRINTF("AUDIT: Server wants security but we didn't set a public key -- Reporting back ID_REMOTE_SYSTEM_REQUIRES_PUBLIC_KEY to user\n");
-							rakPeer->requestedConnectionQueueMutex.Unlock();
-
-							packet=rakPeer->AllocPacket(2, _FILE_AND_LINE_);
-							packet->data[ 0 ] = ID_REMOTE_SYSTEM_REQUIRES_PUBLIC_KEY; // Attempted a connection and couldn't
-							packet->data[ 1 ] = 0; // Indicate server public key is missing
-							packet->bitSize = ( sizeof( char ) * 8);
-							packet->systemAddress = rcs->systemAddress;
-							packet->guid=guid;
-							rakPeer->AddPacketToProducer(packet);
-							return true;
-						}
-
-						CAT_AUDIT_PRINTF("AUDIT: Looks good, preparing to send challenge to server! client_handshake = %x\n", client_handshake);
-					}
-
-#endif // LIBCAT_SECURITY
-
-					rakPeer->requestedConnectionQueueMutex.Unlock();
-					unlock=false;
-
-					RakAssert(rcs->actionToTake==RakPeer::RequestedConnectionStruct::CONNECT);
-					// You might get this when already connected because of cross-connections
-					bool thisIPConnectedRecently=false;
-					remoteSystem=rakPeer->GetRemoteSystemFromSystemAddress( systemAddress, true, true );
-					if (remoteSystem==0)
-					{
-						if (rcs->socket == 0)
-						{
-							remoteSystem=rakPeer->AssignSystemAddressToRemoteSystemList(systemAddress, 
-								RakPeer::RemoteSystemStruct::UNVERIFIED_SENDER, rakNetSocket, &thisIPConnectedRecently, 
-								bindingAddress, mtu, guid, doSecurity, timeRead);
-						}
-						else
-						{
-							remoteSystem=rakPeer->AssignSystemAddressToRemoteSystemList(systemAddress, 
-								RakPeer::RemoteSystemStruct::UNVERIFIED_SENDER, rcs->socket, 
-								&thisIPConnectedRecently, bindingAddress, mtu, guid, doSecurity, timeRead);
-						}
-					}
-
-					// 4/13/09 Attackers can flood ID_OPEN_CONNECTION_REQUEST and use up all available connection slots
-					// Ignore connection attempts if this IP address connected within the last 100 milliseconds
-					if (thisIPConnectedRecently==false)
-					{
-						// Don't check GetRemoteSystemFromGUID, server will verify
-						if (remoteSystem)
-						{
-							// Move pointer from RequestedConnectionStruct to RemoteSystemStruct
-#if LIBCAT_SECURITY==1
-							cat::u8 ident[cat::EasyHandshake::IDENTITY_BYTES];
-							bool doIdentity = false;
-
-							if (rcs->client_handshake)
+							if (rcs->client_handshake==0)
 							{
-								CAT_AUDIT_PRINTF("AUDIT: Processing answer\n");
-								if (rcs->publicKeyMode == PKM_USE_TWO_WAY_AUTHENTICATION)
-								{
-									if (!rcs->client_handshake->ProcessAnswerWithIdentity(answer, ident, remoteSystem->reliabilityLayer.GetAuthenticatedEncryption()))
-									{
-										CAT_AUDIT_PRINTF("AUDIT: Processing answer -- Invalid Answer\n");
-										rakPeer->requestedConnectionQueueMutex.Unlock();
+								CAT_AUDIT_PRINTF("AUDIT: Server wants security but we didn't set a public key -- Reporting back ID_REMOTE_SYSTEM_REQUIRES_PUBLIC_KEY to user\n");
+								rakPeer->requestedConnectionQueueMutex.Unlock();
 
-										return true;
-									}
-
-									doIdentity = true;
-								}
-								else
-								{
-									if (!rcs->client_handshake->ProcessAnswer(answer, remoteSystem->reliabilityLayer.GetAuthenticatedEncryption()))
-									{
-										CAT_AUDIT_PRINTF("AUDIT: Processing answer -- Invalid Answer\n");
-										rakPeer->requestedConnectionQueueMutex.Unlock();
-
-										return true;
-									}
-								}
-								CAT_AUDIT_PRINTF("AUDIT: Success!\n");
-
-								RakNet::OP_DELETE(rcs->client_handshake,_FILE_AND_LINE_);
-								rcs->client_handshake=0;
+								packet=rakPeer->AllocPacket(2, _FILE_AND_LINE_);
+								packet->data[ 0 ] = ID_REMOTE_SYSTEM_REQUIRES_PUBLIC_KEY; // Attempted a connection and couldn't
+								packet->data[ 1 ] = 0; // Indicate server public key is missing
+								packet->bitSize = ( sizeof( char ) * 8);
+								packet->systemAddress = rcs->systemAddress;
+								packet->guid=guid;
+								rakPeer->AddPacketToProducer(packet);
+								return true;
 							}
+
+							CAT_AUDIT_PRINTF("AUDIT: Looks good, preparing to send challenge to server! client_handshake = %x\n", client_handshake);
+						}
+
 #endif // LIBCAT_SECURITY
 
-							remoteSystem->weInitiatedTheConnection=true;
-							remoteSystem->connectMode=RakPeer::RemoteSystemStruct::REQUESTED_CONNECTION;
-                            if (rcs->timeoutTime != 0)
-                            {
+						rakPeer->requestedConnectionQueueMutex.Unlock();
+						unlock=false;
+
+						RakAssert(rcs->actionToTake==RakPeer::RequestedConnectionStruct::CONNECT);
+						// You might get this when already connected because of cross-connections
+						bool thisIPConnectedRecently=false;
+						remoteSystem=rakPeer->GetRemoteSystemFromSystemAddress( systemAddress, true, true );
+						if (remoteSystem==0)
+						{
+							if (rcs->socket == 0)
+							{
+								remoteSystem=rakPeer->AssignSystemAddressToRemoteSystemList(systemAddress, 
+									RakPeer::RemoteSystemStruct::UNVERIFIED_SENDER, rakNetSocket, &thisIPConnectedRecently, 
+									bindingAddress, mtu, guid, doSecurity, timeRead);
+							}
+							else
+							{
+								remoteSystem=rakPeer->AssignSystemAddressToRemoteSystemList(systemAddress, 
+									RakPeer::RemoteSystemStruct::UNVERIFIED_SENDER, rcs->socket, 
+									&thisIPConnectedRecently, bindingAddress, mtu, guid, doSecurity, timeRead);
+							}
+						}
+
+						// 4/13/09 Attackers can flood ID_OPEN_CONNECTION_REQUEST and use up all available connection slots
+						// Ignore connection attempts if this IP address connected within the last 100 milliseconds
+						if (thisIPConnectedRecently==false)
+						{
+							// Don't check GetRemoteSystemFromGUID, server will verify
+							if (remoteSystem)
+							{
+								// Move pointer from RequestedConnectionStruct to RemoteSystemStruct
+#if LIBCAT_SECURITY==1
+								cat::u8 ident[cat::EasyHandshake::IDENTITY_BYTES];
+								bool doIdentity = false;
+
+								if (rcs->client_handshake)
+								{
+									CAT_AUDIT_PRINTF("AUDIT: Processing answer\n");
+									if (rcs->publicKeyMode == PKM_USE_TWO_WAY_AUTHENTICATION)
+									{
+										if (!rcs->client_handshake->ProcessAnswerWithIdentity(answer, ident, remoteSystem->reliabilityLayer.GetAuthenticatedEncryption()))
+										{
+											CAT_AUDIT_PRINTF("AUDIT: Processing answer -- Invalid Answer\n");
+											rakPeer->requestedConnectionQueueMutex.Unlock();
+	
+											return true;
+										}
+
+										doIdentity = true;
+									}
+									else
+									{
+										if (!rcs->client_handshake->ProcessAnswer(answer, remoteSystem->reliabilityLayer.GetAuthenticatedEncryption()))
+										{
+											CAT_AUDIT_PRINTF("AUDIT: Processing answer -- Invalid Answer\n");
+											rakPeer->requestedConnectionQueueMutex.Unlock();
+	
+											return true;
+										}
+									}
+									CAT_AUDIT_PRINTF("AUDIT: Success!\n");
+	
+									RakNet::OP_DELETE(rcs->client_handshake,_FILE_AND_LINE_);
+									rcs->client_handshake=0;
+								}
+#endif // LIBCAT_SECURITY
+
+								remoteSystem->weInitiatedTheConnection=true;
+								remoteSystem->connectMode=RakPeer::RemoteSystemStruct::REQUESTED_CONNECTION;
+	                            if (rcs->timeoutTime != 0)
+	                            {
 #if RAKNET_ARQ == RAKNET_ARQ_KCP
-                                remoteSystem->timeoutTime = rcs->timeoutTime;
+    	                            remoteSystem->timeoutTime = rcs->timeoutTime;
 #else
-                                remoteSystem->reliabilityLayer.SetTimeoutTime(rcs->timeoutTime);
+        	                        remoteSystem->reliabilityLayer.SetTimeoutTime(rcs->timeoutTime);
 #endif
                                 
-                            }
+            	                }
 
-							RakNet::BitStream temp;
-							temp.Write( (MessageID)ID_CONNECTION_REQUEST);
-							temp.Write(rakPeer->GetGuidFromSystemAddress(UNASSIGNED_SYSTEM_ADDRESS));
-							temp.Write(RakNet::GetTime());
+								RakNet::BitStream temp;
+								temp.Write( (MessageID)ID_CONNECTION_REQUEST);
+								temp.Write(rakPeer->GetGuidFromSystemAddress(UNASSIGNED_SYSTEM_ADDRESS));
+								temp.Write(RakNet::GetTime());
 
 #if LIBCAT_SECURITY==1
-							temp.Write((unsigned char)(doSecurity ? 1 : 0));
+								temp.Write((unsigned char)(doSecurity ? 1 : 0));
 
-							if (doSecurity)
-							{
-								unsigned char proof[32];
-								remoteSystem->reliabilityLayer.GetAuthenticatedEncryption()->GenerateProof(proof, sizeof(proof));
-								temp.WriteAlignedBytes(proof, sizeof(proof));
-
-								temp.Write((unsigned char)(doIdentity ? 1 : 0));
-
-								if (doIdentity)
+								if (doSecurity)
 								{
-									temp.WriteAlignedBytes(ident, sizeof(ident));
+									unsigned char proof[32];
+									remoteSystem->reliabilityLayer.GetAuthenticatedEncryption()->GenerateProof(proof, sizeof(proof));
+									temp.WriteAlignedBytes(proof, sizeof(proof));
+	
+									temp.Write((unsigned char)(doIdentity ? 1 : 0));
+	
+									if (doIdentity)
+									{
+										temp.WriteAlignedBytes(ident, sizeof(ident));
+									}
 								}
-							}
 #else
-							temp.Write((unsigned char)0);
+								temp.Write((unsigned char)0);
 #endif // LIBCAT_SECURITY
 
-                            if (rcs->outgoingPasswordLength > 0)
-                            {
-                                temp.Write((char*)rcs->outgoingPassword, rcs->outgoingPasswordLength);
-                            }
-							rakPeer->SendImmediate((char*)temp.GetData(), temp.GetNumberOfBitsUsed(), IMMEDIATE_PRIORITY, RELIABLE, 0, systemAddress, false, false, timeRead, 0 );
+	                            if (rcs->outgoingPasswordLength > 0)
+	                            {
+	                                temp.Write((char*)rcs->outgoingPassword, rcs->outgoingPasswordLength);
+	                            }
+								rakPeer->SendImmediate((char*)temp.GetData(), temp.GetNumberOfBitsUsed(), IMMEDIATE_PRIORITY, RELIABLE, 0, systemAddress, false, false, timeRead, 0 );
+							}
+							else
+							{
+								RNetLog("Failed, no connections available anymore");
+								packet=rakPeer->AllocPacket(sizeof( char ), _FILE_AND_LINE_);
+								packet->data[ 0 ] = ID_CONNECTION_ATTEMPT_FAILED; // Attempted a connection and couldn't
+								packet->bitSize = ( sizeof( char ) * 8);
+								packet->systemAddress = rcs->systemAddress;
+								packet->guid=guid;
+								rakPeer->AddPacketToProducer(packet);
+							}
 						}
-						else
-						{
-							// Failed, no connections available anymore
-							packet=rakPeer->AllocPacket(sizeof( char ), _FILE_AND_LINE_);
-							packet->data[ 0 ] = ID_CONNECTION_ATTEMPT_FAILED; // Attempted a connection and couldn't
-							packet->bitSize = ( sizeof( char ) * 8);
-							packet->systemAddress = rcs->systemAddress;
-							packet->guid=guid;
-							rakPeer->AddPacketToProducer(packet);
-						}
-					}
 
-					rakPeer->requestedConnectionQueueMutex.Lock();
-					for (unsigned int k=0; k < rakPeer->requestedConnectionQueue.Size(); k++)
-					{
-						if (rakPeer->requestedConnectionQueue[k]->systemAddress==systemAddress)
+						rakPeer->requestedConnectionQueueMutex.Lock();
+						for (unsigned int k=0; k < rakPeer->requestedConnectionQueue.Size(); k++)
 						{
-							rakPeer->requestedConnectionQueue.RemoveAtIndex(k);
-							break;
+							if (rakPeer->requestedConnectionQueue[k]->systemAddress==systemAddress)
+							{
+								rakPeer->requestedConnectionQueue.RemoveAtIndex(k);
+								break;
+							}
 						}
-					}
-					rakPeer->requestedConnectionQueueMutex.Unlock();
+						rakPeer->requestedConnectionQueueMutex.Unlock();
 
 #if LIBCAT_SECURITY==1
-					CAT_AUDIT_PRINTF("AUDIT: Deleting client_handshake object %x and rcs->client_handshake object %x\n", client_handshake, rcs->client_handshake);
-					RakNet::OP_DELETE(client_handshake,_FILE_AND_LINE_);
-					RakNet::OP_DELETE(rcs->client_handshake,_FILE_AND_LINE_);
+						CAT_AUDIT_PRINTF("AUDIT: Deleting client_handshake object %x and rcs->client_handshake object %x\n", client_handshake, rcs->client_handshake);
+						RakNet::OP_DELETE(client_handshake,_FILE_AND_LINE_);
+						RakNet::OP_DELETE(rcs->client_handshake,_FILE_AND_LINE_);
 #endif // LIBCAT_SECURITY
-					RakNet::OP_DELETE(rcs,_FILE_AND_LINE_);
+						RakNet::OP_DELETE(rcs,_FILE_AND_LINE_);
 
-					break;
+						break;
+					}
 				}
+
+				if (unlock)
+					rakPeer->requestedConnectionQueueMutex.Unlock();
 			}
-
-			if (unlock)
-				rakPeer->requestedConnectionQueueMutex.Unlock();
-
+			else
+			{
+				RNetAbnormal("Invalid offline packet");
+			}
 			return true;
 
 		}

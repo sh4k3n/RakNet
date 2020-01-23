@@ -14,3 +14,5 @@
 #else
 #define RNetAbnormal(__expected) assert(__expected)
 #endif
+
+#define RNetLog(...)
