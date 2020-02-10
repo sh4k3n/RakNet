@@ -59,16 +59,16 @@ struct RemoteSystemIndex{unsigned index; RemoteSystemIndex *next;};
 ///
 /// See the individual functions for what the class can do.
 /// 
-class RAK_DLL_EXPORT RakPeer : public RakPeerInterface, public RNS2EventHandler
+class RAK_DLL_EXPORT BasePeer : public RakPeerInterface, public RNS2EventHandler
 {
 public:
 	///Constructor
-	RakPeer();
+	BasePeer();
 
     using RemoteSystemStruct = RemoteSystem;
 
 	///Destructor
-	virtual ~RakPeer();
+	virtual ~BasePeer();
 
 	// --------------------------------------------------------------------------------------------Major Low Level Functions - Functions needed by most users--------------------------------------------------------------------------------------------
 	/// \brief Starts the network threads and opens the listen port.
@@ -664,9 +664,9 @@ protected:
 	//friend RAK_THREAD_DECLARATION(RecvFromLoop);
 	friend RAK_THREAD_DECLARATION(UDTConnect);
 
-	friend bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, bool *isOfflineMessage, RakNet::TimeMS timeRead );
-	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNet::TimeMS timeRead, BitStream &updateBitStream );
-	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, RakPeer *rakPeer, RakNetSocket2* rakNetSocket, RakNet::TimeMS timeRead, BitStream &updateBitStream );
+	friend bool ProcessOfflineNetworkPacket( SystemAddress systemAddress, const char *data, const int length, BasePeer *rakPeer, RakNetSocket2* rakNetSocket, bool *isOfflineMessage, RakNet::TimeMS timeRead );
+	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, BasePeer *rakPeer, RakNet::TimeMS timeRead, BitStream &updateBitStream );
+	friend void ProcessNetworkPacket( const SystemAddress systemAddress, const char *data, const int length, BasePeer *rakPeer, RakNetSocket2* rakNetSocket, RakNet::TimeMS timeRead, BitStream &updateBitStream );
 
 	int GetIndexFromSystemAddress( const SystemAddress systemAddress, bool calledFromNetworkThread ) const;
 	int GetIndexFromGuid( const RakNetGUID guid );
@@ -680,12 +680,12 @@ protected:
 	/// \param[in] systemAddress The player identifier 
 	/// \return 0 if none
 	RemoteSystemStruct *GetRemoteSystemFromSystemAddress( const SystemAddress systemAddress, bool calledFromNetworkThread, bool onlyActive ) const;
-	RakPeer::RemoteSystemStruct *GetRemoteSystem( const AddressOrGUID systemIdentifier, bool calledFromNetworkThread, bool onlyActive ) const;
+	BasePeer::RemoteSystemStruct *GetRemoteSystem( const AddressOrGUID systemIdentifier, bool calledFromNetworkThread, bool onlyActive ) const;
 	void ValidateRemoteSystemLookup(void) const;
 	RemoteSystemStruct *GetRemoteSystemFromGUID( const RakNetGUID guid, bool onlyActive ) const;
 	///Parse out a connection request packet
-	void ParseConnectionRequestPacket( RakPeer::RemoteSystemStruct *remoteSystem, const SystemAddress &systemAddress, const char *data, int byteSize);
-	void OnConnectionRequest( RakPeer::RemoteSystemStruct *remoteSystem, RakNet::Time incomingTimestamp );
+	void ParseConnectionRequestPacket( BasePeer::RemoteSystemStruct *remoteSystem, const SystemAddress &systemAddress, const char *data, int byteSize);
+	void OnConnectionRequest( BasePeer::RemoteSystemStruct *remoteSystem, RakNet::Time incomingTimestamp );
 	///Send a reliable disconnect packet to this player and disconnect them when it is delivered
 	void NotifyAndFlagForShutdown( const SystemAddress systemAddress, bool performImmediate, unsigned char orderingChannel, PacketPriority disconnectionNotificationPriority );
 	///Returns how many remote systems initiated a connection to us
