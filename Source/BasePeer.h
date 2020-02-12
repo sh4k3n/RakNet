@@ -639,7 +639,8 @@ public:
 	//	+ cat::AuthenticatedEncryption::OVERHEAD_BYTES
 	// #endif
 	// );
-	bool RunUpdateCycle( BitStream &updateBitStream );
+	void PreUpdate( BitStream &updateBitStream );
+	void PostUpdate();
 
 	/// \internal
 	// Call manually if RAKPEER_USER_THREADED==1 at least every 30 milliseconds.
@@ -652,6 +653,13 @@ public:
 
 	// static Packet *AllocPacket(unsigned dataSize, const char *file, unsigned int line);
 
+	virtual bool RunUpdateCycle(BitStream& bitStream) override 
+	{ 
+		PreUpdate(bitStream);
+		PostUpdate();
+		return true;
+	}
+
 	/// \internal
 
 
@@ -660,7 +668,8 @@ public:
 	// /DS_APR
 protected:
 
-	friend RAK_THREAD_DECLARATION(UpdateNetworkLoop);
+	virtual bool StartThreads(int) { return true; }
+
 	//friend RAK_THREAD_DECLARATION(RecvFromLoop);
 	friend RAK_THREAD_DECLARATION(UDTConnect);
 
@@ -996,6 +1005,8 @@ protected:
 
 	virtual void OnRNS2Recv(RNS2RecvStruct *recvStruct);
 	void FillIPList(void);
+	private:
+		void RemoteSystemReceive(const TimeMS timeMS, RemoteSystemStruct * remoteSystem);
 } 
 // #if defined(SN_TARGET_PSP2)
 // __attribute__((aligned(8)))

@@ -8,6 +8,9 @@ namespace RakNet
 	{
 	public:
 		RakPeer();
-	};
+	protected:
+		friend RAK_THREAD_DECLARATION(UpdateNetworkLoop);
 
+		virtual bool StartThreads(int threadPriority) override;
+	};
 }
