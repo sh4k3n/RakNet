@@ -294,7 +294,7 @@ struct RNS2_BerkleyBindParameters
 	int setIPHdrIncl;
 	int doNotFragment;
 	int pollingThreadPriority;
-	RNS2EventHandler *eventHandler;
+	RNS2EventHandler *eventHandler = nullptr;
 	unsigned short remotePortRakNetWasStartedOn_PS3_PS4_PSP2;
 };
 

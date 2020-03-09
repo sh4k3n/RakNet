@@ -197,7 +197,7 @@ public:
 
 	/// \brief Returns true if the network thread is running.
 	/// \return True if the network thread is running, False otherwise
-	bool IsActive( void ) const;
+	bool IsActive() const { return endThreads == false; }
 
 	/// \brief Fills the array remoteSystems with the SystemAddress of all the systems we are connected to.
 	/// \param[out] remoteSystems An array of SystemAddress structures, to be filled with the SystemAddresss of the systems we are connected to. Pass 0 to remoteSystems to get the number of systems we are connected to.
@@ -630,36 +630,14 @@ public:
 
 	// --------------------------------------------------------------------------------------------EVERYTHING AFTER THIS COMMENT IS FOR INTERNAL USE ONLY--------------------------------------------------------------------------------------------
 
-
-	/// \internal
-	// Call manually if RAKPEER_USER_THREADED==1 at least every 30 milliseconds.
-	// updateBitStream should be:
-	// 	BitStream updateBitStream( MAXIMUM_MTU_SIZE
-	// #if LIBCAT_SECURITY==1
-	//	+ cat::AuthenticatedEncryption::OVERHEAD_BYTES
-	// #endif
-	// );
+	
 	void PreUpdate( BitStream &updateBitStream );
 	void PostUpdate();
-
-	/// \internal
-	// Call manually if RAKPEER_USER_THREADED==1 at least every 30 milliseconds.
-	// Call in a loop until returns false if the socket is non-blocking
-	// remotePortRakNetWasStartedOn_PS3 and extraSocketOptions are from SocketDescriptor when the socket was created
-	// bool RunRecvFromOnce( RakNetSocket *s );
 
 	/// \internal
 	bool SendOutOfBand(const char *host, unsigned short remotePort, const char *data, BitSize_t dataLength, unsigned connectionSocketIndex=0 );
 
 	// static Packet *AllocPacket(unsigned dataSize, const char *file, unsigned int line);
-
-	virtual bool RunUpdateCycle(BitStream& bitStream) override 
-	{ 
-		PreUpdate(bitStream);
-		PostUpdate();
-		return true;
-	}
-
 	/// \internal
 
 
@@ -668,7 +646,11 @@ public:
 	// /DS_APR
 protected:
 
-	virtual bool StartThreads(int) { return true; }
+	void Shutdown();
+
+	virtual bool StartThreads(int);
+
+	virtual void StopThreads();
 
 	//friend RAK_THREAD_DECLARATION(RecvFromLoop);
 	friend RAK_THREAD_DECLARATION(UDTConnect);
@@ -953,8 +935,10 @@ protected:
 	bool allowConnectionResponseIPMigration;
 
 	SystemAddress firstExternalID;
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	int splitMessageProgressInterval;
 	RakNet::TimeMS unreliableTimeout;
+#endif
 
 	bool (*incomingDatagramEventHandler)(RNS2RecvStruct *);
 

@@ -66,11 +66,6 @@
 #define CAT_AUDIT_PRINTF(...)
 #endif
 
-namespace RakNet
-{
-	RAK_THREAD_DECLARATION(RecvFromLoop);
-	RAK_THREAD_DECLARATION(UDTConnect);
-}
 #define REMOTE_SYSTEM_LOOKUP_HASH_MULTIPLE 8
 
 #if !defined ( __APPLE__ ) && !defined ( __APPLE_CC__ )
@@ -97,6 +92,11 @@ extern void Console2GetIPAndPort(unsigned int, char *, unsigned short *, unsigne
 */
 #endif
 
+namespace RakNet
+{
+	RAK_THREAD_DECLARATION(RecvFromLoop);
+	RAK_THREAD_DECLARATION(UDTConnect);
+}
 
 static const int NUM_MTU_SIZES = 3;
 
@@ -239,16 +239,17 @@ BasePeer::BasePeer()
 	allowConnectionResponseIPMigration = false;
 	//incomingPasswordLength=outgoingPasswordLength=0;
 	incomingPasswordLength = 0;
-	splitMessageProgressInterval = 0;
 	//unreliableTimeout=0;
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	unreliableTimeout = 1000;
+#endif
 	maxOutgoingBPS = 0;
 	firstExternalID = UNASSIGNED_SYSTEM_ADDRESS;
 	myGuid = UNASSIGNED_RAKNET_GUID;
 	userUpdateThreadPtr = 0;
 	userUpdateThreadData = 0;
 
-	defaultTimeoutTime = 10000;
+	defaultTimeoutTime = rnet::DefaultTimeout;
 
 	bufferedCommands.SetPageSize(sizeof(BufferedCommandStruct) * 16);
 	socketQueryOutput.SetPageSize(sizeof(SocketQueryOutput) * 8);
@@ -258,48 +259,6 @@ BasePeer::BasePeer()
 	packetAllocationPoolMutex.Unlock();
 
 	remoteSystemIndexPool.SetPageSize(sizeof(DataStructures::MemoryPool<RemoteSystemIndex>::MemoryWithPage) * 32);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	GenerateGUID();
 
@@ -313,43 +272,7 @@ BasePeer::BasePeer()
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 BasePeer::~BasePeer()
 {
-	Shutdown(0, 0);
 
-	// Free the ban list.
-	ClearBanList();
-
-	StringCompressor::RemoveReference();
-	RakNet::StringTable::RemoveReference();
-	WSAStartupSingleton::Deref();
-
-	quitAndDataEvents.CloseEvent();
-
-#if LIBCAT_SECURITY==1
-	// Encryption and security
-	CAT_AUDIT_PRINTF("AUDIT: Deleting RakPeer security objects, handshake = %x, cookie jar = %x\n", _server_handshake, _cookie_jar);
-	if (_server_handshake) RakNet::OP_DELETE(_server_handshake, _FILE_AND_LINE_);
-	if (_cookie_jar) RakNet::OP_DELETE(_cookie_jar, _FILE_AND_LINE_);
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	// 	for (unsigned int i=0; i < pluginListTS.Size(); i++)
-	// 		pluginListTS[i]->SetRakPeerInterface(0);
-	// 	for (unsigned int i=0; i < pluginListNTS.Size(); i++)
-	// 		pluginListNTS[i]->SetRakPeerInterface(0);
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -576,19 +499,16 @@ StartupResult BasePeer::Startup(unsigned int maxConnections, SocketDescriptor *s
 	if (endThreads)
 	{
 		updateCycleIsRunning = false;
-		endThreads = false;
 		firstExternalID = UNASSIGNED_SYSTEM_ADDRESS;
 
 		ClearBufferedCommands();
 		ClearBufferedPackets();
 		ClearSocketQueryOutput();
 
-#if RAKPEER_USER_THREADED!=1
 		if (!StartThreads(threadPriority))
 		{
 			return FAILED_TO_CREATE_NETWORK_THREAD;
 		}
-#endif // RAKPEER_USER_THREADED!=1
 	}
 
 	for (unsigned int i = 0; i < pluginListTS.Size(); i++)
@@ -962,62 +882,7 @@ void BasePeer::Shutdown(unsigned int blockDuration, unsigned char orderingChanne
 
 	quitAndDataEvents.SetEvent();
 
-	endThreads = true;
-
-	//	RakNet::TimeMS timeout;
-#if RAKPEER_USER_THREADED!=1
-
-#if !defined(__native_client__) && !defined(WINDOWS_STORE_RT)
-	for (i = 0; i < socketList.Size(); i++)
-	{
-		if (socketList[i]->IsBerkleySocket())
-		{
-			((RNS2_Berkley *)socketList[i])->SignalStopRecvPollingThread();
-		}
-	}
-#endif
-
-	/*
-	// Get recvfrom to unblock
-	for (i=0; i < socketList.Size(); i++)
-	{
-		if (SocketLayer::SendTo(socketList[i], (const char*) &i,1,socketList[i]->GetBoundAddress(), _FILE_AND_LINE_)!=0)
-			break;
-	}
-	*/
-
-	while (isMainLoopThreadActive)
-	{
-		endThreads = true;
-		RakSleep(15);
-	}
-
-	/*
-	timeout = RakNet::GetTimeMS()+1000;
-	while ( isRecvFromLoopThreadActive.GetValue()>0 && RakNet::GetTimeMS()<timeout )
-	{
-		// Get recvfrom to unblock
-		for (i=0; i < socketList.Size(); i++)
-		{
-			SocketLayer::SendTo(socketList[i], (const char*) &i,1,socketList[i]->GetBoundAddress(), _FILE_AND_LINE_);
-		}
-
-		RakSleep(30);
-	}
-	*/
-
-#if !defined(__native_client__) && !defined(WINDOWS_STORE_RT)
-	for (i = 0; i < socketList.Size(); i++)
-	{
-		if (socketList[i]->IsBerkleySocket())
-		{
-			((RNS2_Berkley *)socketList[i])->BlockOnStopRecvPollingThread();
-		}
-	}
-#endif
-
-
-#endif // RAKPEER_USER_THREADED!=1
+	StopThreads();
 
 	//	char c=0;
 	//	unsigned int socketIndex;
@@ -1089,15 +954,6 @@ void BasePeer::Shutdown(unsigned int blockDuration, unsigned char orderingChanne
 #endif
 
 	ResetSendReceipt();
-}
-
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// Description:
-// Returns true if the network threads are running
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-inline bool BasePeer::IsActive(void) const
-{
-	return endThreads == false;
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1342,52 +1198,13 @@ uint32_t BasePeer::SendList(const char **data, const int *lengths, const int num
 #endif
 Packet* BasePeer::Receive(void)
 {
-	if (!(IsActive()))
-		return 0;
+	RNetAssert(IsActive(), "Not active");
 
 	RakNet::Packet *packet;
-	//	Packet **threadPacket;
 	PluginReceiveResult pluginResult;
 
-	int offset;
+//	int offset;
 	unsigned int i;
-
-	// User should call RunUpdateCycle and RunRecvFromOnce to do this commented code
-	/*
-#if RAKPEER_SINGLE_THREADED==1
-	RakPeer::RecvFromStruct *recvFromStruct;
-	for (i=0; i < socketList.Size(); i++)
-	{
-		while (1)
-		{
-			recvFromStruct=bufferedPackets.Allocate( _FILE_AND_LINE_ );
-			recvFromStruct->s=socketList[i]->s;
-			recvFromStruct->remotePortRakNetWasStartedOn_PS3=socketList[i]->remotePortRakNetWasStartedOn_PS3_PSP2;
-			recvFromStruct->extraSocketOptions=socketList[i]->extraSocketOptions;
-			SocketLayer::RecvFromBlocking(
-				recvFromStruct->s, this, recvFromStruct->remotePortRakNetWasStartedOn_PS3,
-				recvFromStruct->extraSocketOptions, recvFromStruct->data, &recvFromStruct->bytesRead, &recvFromStruct->systemAddress, &recvFromStruct->timeRead);
-			if (recvFromStruct->bytesRead<=0)
-			{
-				bufferedPackets.Deallocate(recvFromStruct, _FILE_AND_LINE_);
-				break;
-			}
-			else
-			{
-				RakAssert(recvFromStruct->systemAddress.GetPort());
-				bufferedPackets.Push(recvFromStruct);
-			}
-		}
-	}
-
-	BitStream updateBitStream( MAXIMUM_MTU_SIZE
-#if LIBCAT_SECURITY==1
-		+ cat::AuthenticatedEncryption::OVERHEAD_BYTES
-#endif
-		);
-	RunUpdateCycle(0, 0, updateBitStream);
-#endif
-	*/
 
 	for (i = 0; i < pluginListTS.Size(); i++)
 	{
@@ -1413,7 +1230,7 @@ Packet* BasePeer::Receive(void)
 		if ((packet->length >= sizeof(unsigned char) + sizeof(RakNet::Time)) &&
 			((unsigned char)packet->data[0] == ID_TIMESTAMP))
 		{
-			offset = sizeof(unsigned char);
+			// offset = sizeof(unsigned char);
 
 			// TODO: Disabled timestamp shifting. Better to do this kind of stuff in application code 
 			// since it works only if you predicting only and not e.g. interpolating.
@@ -1713,10 +1530,11 @@ RakNetGUID BasePeer::GetGUIDFromIndex(unsigned int index)
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void BasePeer::GetSystemList(DataStructures::List<SystemAddress> &addresses, DataStructures::List<RakNetGUID> &guids) const
 {
+	RNetAssert(IsActive(), "Not active");
 	addresses.Clear(false, _FILE_AND_LINE_);
 	guids.Clear(false, _FILE_AND_LINE_);
 
-	if (remoteSystemList == 0 || endThreads == true)
+	if (remoteSystemList == 0)
 		return;
 
 	unsigned int i;
@@ -2610,7 +2428,11 @@ void BasePeer::SetSplitMessageProgressInterval(int interval)
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 int BasePeer::GetSplitMessageProgressInterval(void) const
 {
+#if RAKNET_ARQ != RAKNET_ARQ_KCP
 	return splitMessageProgressInterval;
+#else
+	return 0;
+#endif
 }
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2621,8 +2443,8 @@ int BasePeer::GetSplitMessageProgressInterval(void) const
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void BasePeer::SetUnreliableTimeout(RakNet::TimeMS timeoutMS)
 {
-	unreliableTimeout = timeoutMS;
 #if RAKNET_ARQ != RAKNET_ARQ_KCP
+	unreliableTimeout = timeoutMS;
 	for (unsigned short i = 0; i < maximumNumberOfPeers; i++)
 	{
 		remoteSystemList[i].reliabilityLayer.SetUnreliableTimeout(unreliableTimeout);
@@ -6309,37 +6131,6 @@ void BasePeer::OnRNS2Recv(RNS2RecvStruct *recvStruct)
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-/*
-RAK_THREAD_DECLARATION(RakNet::RecvFromLoop)
-{
-#if defined(SN_TARGET_PSP2)
-	RakPeerAndIndex *rpai = ( RakPeerAndIndex * ) RakThread::GetRealThreadArgument(callGetRealThreadArgument);
-#else
-	RakPeerAndIndex *rpai = ( RakPeerAndIndex * ) arguments;
-#endif
-	RakPeer * rakPeer = rpai->rakPeer;
-	RakNetSocket *s = rpai->s;
-	RakNet::OP_DELETE(rpai,_FILE_AND_LINE_);
-
-	rakPeer->isRecvFromLoopThreadActive.Increment();
-
-	while ( rakPeer->endThreads == false )
-	{
-		if (rakPeer->RunRecvFromOnce(s)==false &&
-			s->GetBlockingSocket()==false)
-			RakSleep(0);
-	}
-	rakPeer->isRecvFromLoopThreadActive.Decrement();
-
-#if defined(SN_TARGET_PSP2)
-	return sceKernelExitDeleteThread(0);
-#else
-	return 0;
-#endif
-}
-*/
-
-
 void BasePeer::CallPluginCallbacks(DataStructures::List<PluginInterface2*> &pluginList, Packet *packet)
 {
 	for (unsigned int i = 0; i < pluginList.Size(); i++)
@@ -6422,6 +6213,39 @@ void BasePeer::FillIPList(void)
 		}
 		++startingIdx;
 	}
+}
+
+bool BasePeer::StartThreads(int)
+{
+	endThreads = false;
+	return true;
+}
+
+void BasePeer::StopThreads()
+{
+	endThreads = true;
+}
+
+void BasePeer::Shutdown()
+{
+	Shutdown(0, 0);
+
+	// Free the ban list.
+	ClearBanList();
+
+	StringCompressor::RemoveReference();
+	RakNet::StringTable::RemoveReference();
+	WSAStartupSingleton::Deref();
+
+	quitAndDataEvents.CloseEvent();
+
+#if LIBCAT_SECURITY==1
+	// Encryption and security
+	CAT_AUDIT_PRINTF("AUDIT: Deleting RakPeer security objects, handshake = %x, cookie jar = %x\n", _server_handshake, _cookie_jar);
+	if (_server_handshake) RakNet::OP_DELETE(_server_handshake, _FILE_AND_LINE_);
+	if (_cookie_jar) RakNet::OP_DELETE(_cookie_jar, _FILE_AND_LINE_);
+#endif
+
 }
 
 

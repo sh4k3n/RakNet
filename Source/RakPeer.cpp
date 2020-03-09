@@ -5,10 +5,15 @@ namespace RakNet
 {
 	STATIC_FACTORY_DEFINITIONS(RakPeerInterface, RakPeer)
 
-	RAK_THREAD_DECLARATION(UpdateNetworkLoop);
+		RAK_THREAD_DECLARATION(UpdateNetworkLoop);
 
 	RakPeer::RakPeer() : BasePeer()
 	{
+	}
+
+	RakPeer::~RakPeer()
+	{
+		Shutdown();
 	}
 
 	// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -48,6 +53,7 @@ namespace RakNet
 
 	bool RakPeer::StartThreads(int threadPriority)
 	{
+		BasePeer::StartThreads(threadPriority);
 		if (isMainLoopThreadActive == false)
 		{
 			int errorCode;
@@ -64,5 +70,60 @@ namespace RakNet
 			RakSleep(10);
 		}
 		return true;
+	}
+
+	void RakPeer::StopThreads()
+	{
+		BasePeer::StopThreads();
+
+
+#if !defined(__native_client__) && !defined(WINDOWS_STORE_RT)
+		for (unsigned int i = 0; i < socketList.Size(); i++)
+		{
+			if (socketList[i]->IsBerkleySocket())
+			{
+				((RNS2_Berkley *)socketList[i])->SignalStopRecvPollingThread();
+			}
+		}
+#endif
+
+		/*
+		// Get recvfrom to unblock
+		for (i=0; i < socketList.Size(); i++)
+		{
+			if (SocketLayer::SendTo(socketList[i], (const char*) &i,1,socketList[i]->GetBoundAddress(), _FILE_AND_LINE_)!=0)
+				break;
+		}
+		*/
+
+		while (isMainLoopThreadActive)
+		{
+			endThreads = true;
+			RakSleep(15);
+		}
+
+		/*
+		timeout = RakNet::GetTimeMS()+1000;
+		while ( isRecvFromLoopThreadActive.GetValue()>0 && RakNet::GetTimeMS()<timeout )
+		{
+			// Get recvfrom to unblock
+			for (i=0; i < socketList.Size(); i++)
+			{
+				SocketLayer::SendTo(socketList[i], (const char*) &i,1,socketList[i]->GetBoundAddress(), _FILE_AND_LINE_);
+			}
+
+			RakSleep(30);
+		}
+		*/
+
+#if !defined(__native_client__) && !defined(WINDOWS_STORE_RT)
+		for (unsigned int i = 0; i < socketList.Size(); i++)
+		{
+			if (socketList[i]->IsBerkleySocket())
+			{
+				((RNS2_Berkley *)socketList[i])->BlockOnStopRecvPollingThread();
+			}
+		}
+#endif
 	}
 }

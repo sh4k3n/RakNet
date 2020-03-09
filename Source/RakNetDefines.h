@@ -168,15 +168,9 @@
 #define INTERNAL_PACKET_PAGE_SIZE 8
 #endif
 
-// If defined to 1, the user is responsible for calling RakPeer::RunUpdateCycle and RakPeer::RunRecvfrom
-#ifndef RAKPEER_USER_THREADED
-#define RAKPEER_USER_THREADED 0
-#endif
-
 #ifndef USE_ALLOCA
 #define USE_ALLOCA 1
 #endif
-
 
 /// Sizeof an UDP header in byte
 #ifndef UDP_HEADER_SIZE
